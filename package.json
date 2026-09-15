@@ -1,0 +1,34 @@
+{
+  "name": "gav-expense-manager",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:rls": "supabase test db",
+    "test:integration": "RUN_SUPABASE_INTEGRATION=1 vitest run integration/supabase.rls.integration.test.ts"
+  },
+  "dependencies": {
+    "@ant-design/v5-patch-for-react-19": "^1.0.3",
+    "@supabase/supabase-js": "^2.116.0",
+    "@vitejs/plugin-react": "latest",
+    "antd": "^5.29.3",
+    "firebase": "^12.19.0",
+    "jalaali-js": "^2.0.1",
+    "lucide-react": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "recharts": "latest",
+    "vite": "latest"
+  },
+  "devDependencies": {
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "typescript": "latest",
+    "vitest": "^5.0.0"
+  }
+}
