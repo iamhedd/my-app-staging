@@ -6,10 +6,10 @@ import {
   Utensils, CarFront, House, ShoppingBag, HeartPulse, Gamepad2, WalletCards,
   X, LogOut, Tags, Moon, ShieldCheck, UserRound,
   LockKeyhole, Mail, Sparkles, CalendarDays, Repeat2,
-  ChevronLeft, ChevronRight, TrendingUp, Wrench, Loader2, RefreshCw,
+  ChevronLeft, ChevronRight, Wrench, Loader2, RefreshCw,
 } from 'lucide-react';
 import {
-  Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
   Tooltip, XAxis, YAxis,
 } from 'recharts';
 import {
@@ -23,7 +23,7 @@ import { jalaaliMonthLength, toJalaali } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
 import {
-  displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
+  displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
   monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, type JalaliMonth,
 } from './dateUtils';
 import { materializeRecurringTransactions, normalizeTransactions, type Recurrence, type Transaction, type TxType } from './transactions';
@@ -697,15 +697,24 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
     };
   });
   const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
-  const elapsedDays = elapsedDaysInMonth(month);
-  const forecast = elapsedDays > 0 ? Math.round(expense / elapsedDays * month.length) : 0;
-  const topCategory = data[0];
-  return <><PageHeader title="گزارش‌ها" description="الگوی خرج‌کردنت را ببین و تصمیم‌های دقیق‌تری بگیر." />
-    <div className="report-summary savings-report"><div><span>درآمد ثبت‌شده</span><strong className="green">{formatMoney(income)}</strong></div><div><span>هزینه این ماه</span><strong className="red">{formatMoney(expense)}</strong></div><div><span>پس‌انداز ثبت‌شده</span><strong className="savings-value">{formatMoney(savings)}</strong></div><div><span>مانده قابل خرج</span><strong>{formatMoney(Math.max(0, spendableAmount - expense))}</strong></div></div>
-    <section className="dashboard-grid report-grid"><div className="panel trend-panel"><PanelTitle title="مقایسه ماهانه و روند پس‌انداز" subtitle="هزینه و پس‌انداز در ۶ ماه اخیر" action="هزار تومان"/><div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={comparison}><CartesianGrid stroke="#E8E8E8" vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fill:'#707070',fontSize:11}}/><YAxis hide/><Tooltip formatter={(value, name) => [`${value} هزار تومان`, name === 'savings' ? 'پس‌انداز' : 'هزینه']}/><Area type="monotone" dataKey="expense" stroke="#DF7899" strokeWidth={2.5} fill="#FBE4EC"/><Area type="monotone" dataKey="savings" stroke="#BE5275" strokeWidth={2.5} fill="#F2A9C0"/></AreaChart></ResponsiveContainer></div><div className="chart-legend"><span><i className="expense-dot"/>هزینه</span><span><i className="savings-dot"/>پس‌انداز</span></div></div>
-      <div className="panel category-panel"><PanelTitle title="دسته‌های پرخرج" subtitle={`رتبه‌بندی ${month.label}`}/><div className="category-bars">{data.length ? data.slice(0, 5).map(c => <div key={c.name}><div><span>{c.name}</span><b>{formatMoney(c.value)}</b></div><div className="bar"><i style={{width:`${c.value/Math.max(data[0].value, 1)*100}%`,background:c.color}}/></div></div>) : <div className="empty-state compact"><p>هنوز هزینه‌ای برای این ماه ثبت نشده است.</p></div>}</div></div></section>
-    <section className="report-insights"><div className="panel insight-card"><div className="insight-icon"><TrendingUp size={20}/></div><div><span>پیش‌بینی هزینه پایان ماه</span><strong>{formatMoney(forecast)}</strong><small>{elapsedDays ? `بر اساس ${toPersianDigits(elapsedDays)} روز ثبت‌شده از ${toPersianDigits(month.length)} روز` : 'برای ماه‌های آینده پس از ثبت هزینه محاسبه می‌شود'}</small></div></div><div className="panel insight-card"><div className="insight-icon savings"><Target size={20}/></div><div><span>بیشترین هزینه</span><strong>{topCategory ? topCategory.name : 'بدون داده'}</strong><small>{topCategory ? formatMoney(topCategory.value) : 'برای تحلیل، تراکنش هزینه ثبت کن'}</small></div></div></section>
-  </>;
+  const hasComparisonData = comparison.some(item => item.expense > 0 || item.savings > 0);
+  return <div className="reports-page"><PageHeader title="گزارش‌ها" description="الگوی خرج‌کردنت را ببین و تصمیم‌های دقیق‌تری بگیر." />
+    <section className="report-summary savings-report" aria-label={`خلاصه مالی ${month.label}`}>
+      <div><span>درآمد ثبت‌شده</span><strong className="green">{formatMoney(income).replace(' تومان','')}</strong></div>
+      <div><span>هزینه این ماه</span><strong className="red">{formatMoney(expense).replace(' تومان','')}</strong></div>
+      <div><span>پس‌انداز ثبت‌شده</span><strong className="savings-value">{formatMoney(savings).replace(' تومان','')}</strong></div>
+      <div><span>مانده قابل خرج</span><strong>{formatMoney(Math.max(0, spendableAmount - expense)).replace(' تومان','')}</strong></div>
+    </section>
+    <section className="panel report-comparison-card">
+      <PanelTitle title="مقایسه ماهانه و روند پس‌انداز" subtitle="هزینه و پس‌انداز در ۶ ماه اخیر"/>
+      {hasComparisonData ? <div className="report-comparison-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...comparison].reverse()} barCategoryGap="20%"><Tooltip cursor={{fill:'#F6F6F6'}} contentStyle={{border:'1px solid #E8E8E8',borderRadius:12,direction:'rtl'}} formatter={(value, name) => [`${value} هزار تومان`, name === 'savings' ? 'پس‌انداز' : 'هزینه']}/><Bar dataKey="savings" stackId="monthly" fill="#BE5275" radius={[0,0,4,4]}/><Bar dataKey="expense" stackId="monthly" fill="#F7D5DE" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div> : <Empty className="report-chart-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="برای نمایش روند، تراکنش ثبت کن."/>}
+      <div className="chart-legend"><span><i className="expense-dot"/>هزینه</span><span><i className="savings-dot"/>پس‌انداز</span></div>
+    </section>
+    <section className="panel report-category-card">
+      <PanelTitle title="دسته‌های پرخرج" subtitle={`رتبه‌بندی ${month.label}`}/>
+      <div className="category-bars">{data.length ? data.slice(0, 3).map(c => <div key={c.name}><div><span>{c.name}</span><b>{formatMoney(c.value).replace(' تومان','')}</b></div><div className="bar"><i style={{width:`${c.value/Math.max(data[0].value, 1)*100}%`}}/></div></div>) : <div className="empty-state compact"><p>هنوز هزینه‌ای برای این ماه ثبت نشده است.</p></div>}</div>
+    </section>
+  </div>;
 }
 
 function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, weeklyBudgets, setWeeklyBudgets, notify }: { month: JalaliMonth; categoryOptions: Category[]; transactions: Transaction[]; budgets: BudgetMap; setBudgets: (b: BudgetMap) => void | Promise<void>; weeklyBudgets: WeeklyBudgetStore; setWeeklyBudgets: (b: WeeklyBudgetStore) => void | Promise<void>; notify: (s: string) => void }) {
@@ -874,7 +883,11 @@ function DailyExpenseModal({ open, date, setDate, categoryOptions, transactions,
   const monthLength = jalaaliMonthLength(selected.year, selected.month);
   const firstDay = jalaliToDate(jalaliDateKey(selected.year, selected.month, 1));
   const startOffset = firstDay ? (firstDay.getDay() + 1) % 7 : 0;
-  const weekdays = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+  const weekdays = [
+    { short: 'ش', label: 'شنبه' }, { short: 'ی', label: 'یکشنبه' }, { short: 'د', label: 'دوشنبه' },
+    { short: 'س', label: 'سه‌شنبه' }, { short: 'چ', label: 'چهارشنبه' }, { short: 'پ', label: 'پنجشنبه' },
+    { short: 'ج', label: 'جمعه' },
+  ];
   const dailyTotals = Object.fromEntries(Array.from({ length: monthLength }, (_, index) => {
     const dayKey = jalaliDateKey(selected.year, selected.month, index + 1);
     const amount = transactions.filter(transaction => transaction.type === 'expense' && transaction.date === dayKey).reduce((sum, transaction) => sum + transaction.amount, 0);
@@ -889,14 +902,14 @@ function DailyExpenseModal({ open, date, setDate, categoryOptions, transactions,
     if (month > 12) { year += 1; month = 1; }
     setDate(jalaliDateKey(year, month, Math.min(selected.day, jalaaliMonthLength(year, month))));
   };
-  return <Modal className="daily-expense-modal" open={open} title={<span className="form-label-icon"><CalendarDays size={19}/>تقویم هزینه‌ها</span>} onCancel={onClose} footer={null} width={720} destroyOnHidden>
+  return <Modal className="daily-expense-modal" open={open} title={<span className="form-label-icon"><CalendarDays size={19}/>تقویم هزینه‌ها</span>} onCancel={onClose} footer={null} width={540} destroyOnHidden>
     <div className="daily-date-switcher month-calendar-switcher">
       <Button aria-label="ماه قبل تقویم" icon={<ChevronRight size={18}/>} onClick={() => changeMonth(-1)}/>
       <div><span>نمای ماهانه</span><strong>{jalaliMonthNames[selected.month - 1]} {toPersianDigits(selected.year)}</strong></div>
       <Button aria-label="ماه بعد تقویم" icon={<ChevronLeft size={18}/>} onClick={() => changeMonth(1)}/>
     </div>
     <div className="monthly-calendar" role="grid" aria-label={`تقویم ${jalaliMonthNames[selected.month - 1]} ${toPersianDigits(selected.year)}`}>
-      {weekdays.map(weekday => <div className="calendar-weekday" role="columnheader" key={weekday}>{weekday}</div>)}
+      {weekdays.map(weekday => <div className="calendar-weekday" role="columnheader" aria-label={weekday.label} key={weekday.label}>{weekday.short}</div>)}
       {Array.from({ length: startOffset }, (_, index) => <div className="calendar-empty" key={`empty-${index}`} aria-hidden="true"/>)}
       {Array.from({ length: monthLength }, (_, index) => {
         const day = index + 1;
@@ -907,7 +920,7 @@ function DailyExpenseModal({ open, date, setDate, categoryOptions, transactions,
     </div>
     <Card className="daily-total-card" variant="borderless"><span>جمع خرج {displayJalaliDate(date)}</span><strong>{formatMoney(total)}</strong><small>{toPersianDigits(expenses.length)} تراکنش هزینه</small></Card>
     <Button className="daily-add-transaction" type="primary" size="large" block icon={<Plus size={18}/>} onClick={() => onAddForDate(date)}>ثبت تراکنش برای این روز</Button>
-    <div className="daily-expense-list"><TransactionList categoryOptions={categoryOptions} items={expenses}/></div>
+    {expenses.length > 0 && <div className="daily-expense-list"><TransactionList categoryOptions={categoryOptions} items={expenses}/></div>}
   </Modal>;
 }
 
