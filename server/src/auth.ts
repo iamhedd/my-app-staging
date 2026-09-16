@@ -61,10 +61,10 @@ export const auth = betterAuth({
     modelName: 'sessions',
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
-    cookieCache: {
-      enabled: true,
-      maxAge: 5 * 60,
-    },
+    // The database-backed session is the source of truth. Better Auth's
+    // optional cookie cache duplicates the user/session payload in one or
+    // more extra cookies and is unnecessary for this same-origin app.
+    cookieCache: { enabled: false },
     fields: {
       expiresAt: 'expires_at',
       token: 'token',

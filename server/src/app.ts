@@ -11,6 +11,7 @@ import { checkDatabase } from './db.js';
 import { env } from './env.js';
 import { errorHandler, HttpError, notFoundHandler, asyncHandler } from './errors.js';
 import { logger } from './logger.js';
+import { obsoleteAuthCookieCleanup } from './middleware/obsoleteAuthCookies.js';
 import { apiRouter } from './routes/api.js';
 
 export function createApp() {
@@ -50,6 +51,10 @@ export function createApp() {
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,
   }));
+
+  // Remove only the optional Better Auth cache cookies issued by older
+  // releases. The HttpOnly session token is intentionally preserved.
+  app.use(obsoleteAuthCookieCleanup());
 
   app.get('/livez', (_request, response) => {
     response.json({ status: 'ok' });
