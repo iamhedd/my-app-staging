@@ -525,3 +525,62 @@ body{color:var(--ink)}
   .mobile-nav button{font-size:8px}
   .allocation-summary-grid{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Structural fidelity fixes from the supplied screen handoff */
+.avatar-picker-card{width:min(420px,calc(100% - 30px));border:0;border-radius:16px;padding:22px 24px 20px;box-shadow:0 24px 60px #1717172a}
+.avatar-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0 20px}
+.avatar-grid>button{border-radius:14px;background:#fff;padding:6px}
+.avatar-grid img{border-radius:10px}
+.onboarding-header,.onboarding-shell{max-width:560px}
+.dashboard-category-empty{width:100%;padding:26px 8px;text-align:center;color:var(--muted);font-size:11px}
+
+@media(max-width:650px){
+  .app-shell:not(.page-dashboard) .mobile-brand .brand-mark{display:none}
+  .app-shell:not(.page-dashboard) .mobile-brand strong{display:block;font-size:15px}
+  .app-shell:not(.page-dashboard) .top-actions{display:none}
+  .page-dashboard .top-actions .daily-calendar-button,.page-dashboard .top-actions .month-switcher{display:none}
+  .page-dashboard .top-actions .icon-button{display:grid}
+  .page-dashboard .top-actions{flex:0 0 auto}
+
+  .page-transactions .page-header,.page-budgets .page-header{display:none}
+  .page-transactions .content,.page-budgets .content{padding-top:16px}
+
+  .page-dashboard .stat-card.savings{display:none}
+  .page-dashboard .stat-grid.has-savings .stat-card.mobile-wide{grid-column:auto}
+  .page-dashboard .stat-grid.has-savings .stat-card.balance{grid-column:1/-1;min-height:92px}
+  .page-dashboard .stat-grid.has-savings .stat-card.balance>.ant-card-body{min-height:92px;display:grid;grid-template-columns:auto 1fr;column-gap:12px}
+  .page-dashboard .stat-grid.has-savings .stat-card.balance .stat-top{grid-row:1/4;margin:0}
+  .page-dashboard .stat-grid.has-savings .stat-card.balance span,
+  .page-dashboard .stat-grid.has-savings .stat-card.balance strong,
+  .page-dashboard .stat-grid.has-savings .stat-card.balance small{grid-column:2}
+  .page-dashboard .trend-panel{display:none}
+  .page-dashboard .category-panel{min-height:0}
+  .page-dashboard .category-panel .panel-title p{display:none}
+  .page-dashboard .donut-row{height:auto;min-height:90px;padding:8px 16px 16px}
+  .page-dashboard .donut-row .donut{display:none}
+  .page-dashboard .donut-row .legend{width:100%;max-width:none;display:flex;flex-direction:column;gap:8px}
+  .page-dashboard .donut-row .legend>div:not(.dashboard-category-empty){font-size:12px;padding:2px 0}
+  .page-dashboard .transactions-panel{margin-top:12px}
+
+  .page-budgets .budget-hero{display:block}
+  .page-budgets .budget-hero-copy>strong{display:none}
+  .page-budgets .budget-summary-values{grid-column:auto;border:0;border-top:0;padding-top:0;margin-top:10px}
+  .page-budgets .budget-summary-values>div{padding-inline:0}
+  .page-budgets .budget-ring{display:none}
+  .page-budgets .budget-item{min-height:0}
+
+  .transactions-ant-filters{padding:12px;border-radius:14px;margin-bottom:12px}
+  .transactions-ant-filters>.ant-card-body{display:block;padding:0}
+  .transactions-ant-filters .ant-input-affix-wrapper{height:38px;margin-bottom:10px;border:0!important;border-radius:10px!important;background:#F7F8F5!important}
+  .transactions-ant-filters .ant-tabs-nav{margin:0!important;padding:3px;border-radius:10px;background:#F0F1ED}
+  .transactions-ant-filters .ant-tabs-tab{min-height:34px;border-radius:8px}
+  .transactions-ant-filters .ant-tabs-tab-active{background:#fff}
+  .transactions-ant-filters .ant-tabs-ink-bar{display:none}
+  .ant-transactions-card{border-radius:16px}
+  .ant-transactions-card>.ant-card-head{min-height:44px;padding-inline:14px}
+  .ant-transactions-card>.ant-card-body{padding:0 14px 6px}
+
+  .ant-modal .ant-segmented-group{width:100%}
+  .ant-modal .ant-segmented-item{min-width:0}
+  .ant-modal .ant-segmented-item-label{padding-inline:4px!important;font-size:10px;white-space:nowrap;overflow:visible;text-overflow:clip}
+}

@@ -429,6 +429,9 @@ export default function App() {
   const expenseCategories: Category[] = activeFinancialSetup.categories.map((category, index) => ({ name: category.name, color: visualCategoryColors[index % visualCategoryColors.length], icon: category.icon }));
   const appCategories = [...expenseCategories, categories.find(category => category.name === 'حقوق')!];
   const visibleNavItems = canAccessDevPanel ? [...navItems, { id: 'dev' as const, label: 'پنل توسعه', icon: Wrench }] : navItems;
+  const mobileHeaderTitle = page === 'dashboard'
+    ? devSettings.appName
+    : [...navItems, { id: 'profile' as const, label: 'پروفایل', icon: UserRound }].find(item => item.id === page)?.label || devSettings.appName;
   const removeTransaction = async (id: string) => {
     if (!currentUser) return;
     try {
@@ -463,7 +466,7 @@ export default function App() {
   };
 
   return withTheme(
-    <div className="app-shell">
+    <div className={`app-shell page-${page}`}>
       <aside className="sidebar">
         <div className="brand"><BrandMark /><div><strong>{devSettings.appName}</strong><span>{devSettings.appTagline}</span></div></div>
         <nav>
@@ -475,7 +478,7 @@ export default function App() {
 
       <main className="main">
         <header className="topbar">
-          <div className="mobile-brand"><BrandMark /><strong>{devSettings.appName}</strong></div>
+          <div className="mobile-brand"><BrandMark /><strong>{mobileHeaderTitle}</strong></div>
           <div className="top-actions"><button className="icon-button" aria-label="اعلان‌ها"><Bell size={20} /></button><Button className="daily-calendar-button" aria-label="تقویم روزانه" icon={<CalendarDays size={17}/>} onClick={openDailyCalendar}><span>تقویم روزانه</span></Button><div className="month-switcher"><button aria-label="ماه قبل" onClick={() => setSelectedMonthOffset(value => value - 1)}><ChevronRight size={17}/></button><button className="month-picker" onClick={() => setSelectedMonthOffset(0)}>{selectedMonth.label}</button><button aria-label="ماه بعد" onClick={() => setSelectedMonthOffset(value => value + 1)} disabled={selectedMonthOffset >= 0}><ChevronLeft size={17}/></button></div></div>
         </header>
 
@@ -633,8 +636,8 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
         <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trendData}><defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#DF7899" stopOpacity={0.38}/><stop offset="100%" stopColor="#DF7899" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#E8E8E8" vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#707070', fontSize: 12 }}/><YAxis hide/><Tooltip contentStyle={{ border: 'none', borderRadius: 16, boxShadow: '0 12px 40px #1717171a', direction: 'rtl' }} formatter={(v) => [`${v} هزار تومان`, 'هزینه']}/><Area type="monotone" dataKey="value" stroke="#171717" strokeWidth={2.5} fill="url(#trendFill)" dot={{ r: 3, fill: '#171717', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#DF7899', strokeWidth: 3, stroke: '#fff' }}/></AreaChart></ResponsiveContainer></div>
       </Card>
       <Card className="panel category-panel" variant="borderless"><PanelTitle title="هزینه بر اساس دسته" subtitle="سهم دسته‌ها از کل هزینه" />
-        <div className="donut-row"><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{compactMoney(expense).replace(' تومان','')}</strong><span>کل هزینه</span></div></div>
-          <div className="legend">{byCategory.slice(0, 5).map(c => <div key={c.name}><span style={{ background: c.color }}></span><label>{c.name}</label><b>{Math.round(c.value / Math.max(expense, 1) * 100)}٪</b></div>)}</div>
+        <div className={`donut-row ${byCategory.length ? '' : 'empty'}`}><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{compactMoney(expense).replace(' تومان','')}</strong><span>کل هزینه</span></div></div>
+          <div className="legend">{byCategory.slice(0, 5).map(c => <div key={c.name}><span style={{ background: c.color }}></span><label>{c.name}</label><b>{Math.round(c.value / Math.max(expense, 1) * 100)}٪</b></div>)}{!byCategory.length && <div className="dashboard-category-empty">هنوز هزینه‌ای ثبت نشده است.</div>}</div>
         </div>
       </Card>
     </section>
