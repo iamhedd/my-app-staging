@@ -778,7 +778,7 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, we
           </div>
           <button className="icon-button budget-edit-button" aria-label={`ویرایش لیمیت ${name}`} onClick={() => { setBudgetError(''); setEditing(name); setAmount(limit ? String(limit) : ''); }}><Pencil size={16}/></button>
         </div>
-        <div className="budget-card-amount" title={limit > 0 ? `${formatMoney(spent)} از ${formatMoney(limit)}` : undefined}><span>{period === 'weekly' ? 'مصرف / سقف هفته' : 'مصرف / بودجه ماه'}</span><strong>{limit > 0 ? `${compactMoney(spent)} / ${compactMoney(limit)}` : 'بدون سقف'}</strong></div>
+        <div className="budget-card-amount" title={limit > 0 ? `${formatMoney(spent)} از ${formatMoney(limit)}` : undefined}><span>{period === 'weekly' ? 'مصرف / سقف هفته' : 'مصرف / بودجه ماه'}</span><strong>{limit > 0 ? `${formatMoney(spent)} / ${formatMoney(limit)}` : 'بدون سقف'}</strong></div>
         <div className="budget-progress" aria-label={`${pct} درصد مصرف شده`}><i style={{ width: `${Math.min(100, pct)}%` }}/></div>
         <div className="budget-foot"><span>{limit === 0 ? 'بدون سقف' : pct >= 100 ? `${pct - 100}٪ بیشتر از سقف` : `${Math.max(0, 100 - pct)}٪ باقی‌مانده`}</span><b className={status}>{pct}٪</b></div>
       </div>;

@@ -1,13 +1,13 @@
 import { useMemo, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Check, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Input, Progress, Segmented, Select, Slider, Steps, Switch } from 'antd';
+import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
+import { Alert, Button, Card, Input, Popover, Progress, Segmented, Slider, Steps, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
   validateFinancialSetup,
   type ExpenseReminder, type FinancialSetup, type SetupCategory,
 } from './financialSetup';
-import { categoryEmoji, categoryEmojiOptions } from './categoryEmoji';
+import { categoryEmoji, categoryEmojiPalette } from './categoryEmoji';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -31,6 +31,7 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
   const [categories, setCategories] = useState<SetupCategory[]>(initialSetup?.categories ?? createDefaultCategories());
   const [allocationInputs, setAllocationInputs] = useState<Record<string, string>>(() => Object.fromEntries((initialSetup?.categories ?? createDefaultCategories()).map(category => [category.id, category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100)])));
   const [newCategory, setNewCategory] = useState('');
+  const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const [permission, setPermission] = useState<NotificationPermission | 'unsupported'>(() => 'Notification' in window ? Notification.permission : 'unsupported');
@@ -182,7 +183,15 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
           </div>
           <div className="setup-category-list">{calculatedCategories.map(category => <div className="setup-category allocation-card" key={category.id}>
             <div className="allocation-category-header">
-              <Select className="category-emoji" value={category.icon} onChange={icon => updateCategory(category.id, { icon })} aria-label={`ایموجی دسته ${category.name}`} options={categoryEmojiOptions.map(option => ({value:option.value,label:option.emoji}))}/>
+              <Popover
+                trigger="click"
+                placement="bottomRight"
+                open={openEmojiPicker === category.id}
+                onOpenChange={open => setOpenEmojiPicker(open ? category.id : null)}
+                content={<div className="category-emoji-palette" role="listbox" aria-label={`انتخاب ایموجی ${category.name}`}>{categoryEmojiPalette(category.name).map(emoji => <button type="button" role="option" aria-selected={categoryEmoji(category.icon, category.name) === emoji} className={categoryEmoji(category.icon, category.name) === emoji ? 'selected' : ''} key={emoji} onClick={() => { updateCategory(category.id, { icon: emoji }); setOpenEmojiPicker(null); }}>{emoji}</button>)}</div>}
+              >
+                <Button className="category-emoji-picker" aria-label={`ایموجی دسته ${category.name}`}>{categoryEmoji(category.icon, category.name)}<ChevronDown size={12}/></Button>
+              </Popover>
               <Input className="category-name" value={category.name} onChange={event => updateCategory(category.id, { name: event.target.value })} aria-label="نام دسته"/>
               <Button className="remove-category" type="text" danger icon={<Trash2 size={17}/>} onClick={() => deleteCategory(category.id)} aria-label={`حذف دسته ${category.name}`}/>
             </div>
