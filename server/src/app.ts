@@ -28,7 +28,6 @@ export function createApp() {
           // OAuth codes and reset tokens may be query parameters. Never log
           // the query string even at debug level.
           path: request.url?.split('?')[0],
-          remoteAddress: request.socket.remoteAddress,
         };
       },
     },
