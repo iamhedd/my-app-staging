@@ -1,7 +1,7 @@
 import { ApiError, apiRequest, jsonBody } from './api';
 import type { User } from './auth';
 import { isoDateToJalali, jalaliToIsoDate } from './dateUtils';
-import type { DevSettings } from './devSettings';
+import { normalizeDevSettings, type DevSettings } from './devSettings';
 import type { FinancialSetup, SetupCategory } from './financialSetup';
 import type { Transaction, TxType } from './transactions';
 
@@ -135,7 +135,7 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
     weeklyBudgets,
     financialSetup,
     appSettings: data.settings?.settings && typeof data.settings.settings === 'object'
-      ? data.settings.settings as DevSettings
+      ? normalizeDevSettings(data.settings.settings as Partial<DevSettings>)
       : null,
   };
 }

@@ -20,7 +20,7 @@ import { getCurrentUser, signInWithEmail, signInWithGoogle, signOut, signUpWithE
 import { enablePushNotifications, listenForForegroundNotifications, notificationPermission } from './firebaseMessaging';
 import { categoryEmoji } from './categoryEmoji';
 import { jalaaliMonthLength, toJalaali } from 'jalaali-js';
-import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, type DevSettings } from './devSettings';
+import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
 import {
   displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
@@ -181,7 +181,14 @@ export default function App() {
   }, [devSettings.accentColor]);
 
   useEffect(() => {
-    if (['#f06f9b', '#d96f8a'].includes(devSettings.accentColor.toLowerCase())) setDevSettings(current => ({ ...current, accentColor: '#DF7899' }));
+    const normalized = normalizeDevSettings(devSettings);
+    if (JSON.stringify(normalized) !== JSON.stringify(devSettings)) {
+      setDevSettings(normalized);
+      return;
+    }
+    if (['#f06f9b', '#d96f8a'].includes(normalized.accentColor.toLowerCase())) {
+      setDevSettings(current => ({ ...normalizeDevSettings(current), accentColor: '#DF7899' }));
+    }
   }, [devSettings.accentColor, setDevSettings]);
 
   useEffect(() => {
@@ -223,7 +230,7 @@ export default function App() {
     setWeeklyBudgets(cloud.weeklyBudgets);
     setFinancialSetup(cloud.financialSetup);
     setDatabaseRole(cloud.role);
-    if (cloud.appSettings) setDevSettings(cloud.appSettings);
+    if (cloud.appSettings) setDevSettings(normalizeDevSettings(cloud.appSettings));
   };
 
   const hydrateCloudUser = async (user: User) => {
