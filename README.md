@@ -1,103 +1,98 @@
 # گاو — مدیریت مالی شخصی
 
-نسخه‌ی اولیه‌ی وب‌اپ فارسی مدیریت درآمد، هزینه و بودجه بر اساس PRD.
+وب‌اپ فارسی و RTL مدیریت درآمد، هزینه، پس‌انداز و بودجه‌بندی با React، Vite و Ant Design. نمودارها با Recharts هستند.
 
-رابط کاربری به‌صورت مرحله‌ای در حال مهاجرت به Ant Design است. `ConfigProvider` با RTL، زبان فارسی و Theme Tokenهای برند فعال شده و صفحه ورود و پنل توسعه از کامپوننت‌های Ant استفاده می‌کنند؛ نمودارها همچنان با Recharts هستند.
+## معماری Production
 
-## اجرا
+- فرانت‌اند React/Vite و API در یک image و روی پورت `3000` اجرا می‌شوند.
+- API با Node.js 22، Express و Better Auth ساخته شده است.
+- داده‌ها در PostgreSQL هم‌روش ذخیره می‌شوند.
+- ورود ایمیل/رمز و Google OAuth توسط Better Auth انجام می‌شود؛ هیچ کلید دیتابیس یا OAuth وارد bundle مرورگر نمی‌شود.
+- migrationهای دیتابیس هنگام شروع container و پیش از اجرای API اعمال می‌شوند.
+- `localStorage` فقط برای cache و مهاجرت idempotent داده‌های نسخه‌های قدیمی نگه داشته می‌شود.
+
+## اجرای توسعه
+
+ابتدا API را با مقادیر محلی `server/.env.example` اجرا کنید:
+
+```bash
+npm --prefix server install
+npm --prefix server run dev
+```
+
+سپس فرانت‌اند را اجرا کنید:
 
 ```bash
 npm install
 npm run dev
 ```
 
-برای ساخت نسخه‌ی production:
-
-```bash
-npm run build
-```
-
 ## Docker Production
 
-تصویر چندمرحله‌ای با Node.js 22 ساخته و خروجی نهایی توسط Nginx روی پورت ۸۰ سرو می‌شود. متغیرهای `VITE_*` هنگام build تزریق می‌شوند؛ Service Role Key نباید به Docker build ارسال شود.
-
 ```bash
-docker build \
-  --build-arg VITE_SUPABASE_URL="$VITE_SUPABASE_URL" \
-  --build-arg VITE_SUPABASE_ANON_KEY="$VITE_SUPABASE_ANON_KEY" \
-  -t gav-finance:latest .
-docker run --rm -p 8080:80 gav-finance:latest
-curl --fail http://localhost:8080/healthz
+docker build -t gav-app:latest .
+docker run --rm --env-file server/.env -p 3000:3000 gav-app:latest
+curl --fail http://localhost:3000/healthz
 ```
 
-Nginx شامل SPA fallback، gzip، cache بلندمدت فایل‌های hash‌شده، جلوگیری از cache شدن `index.html` و health check است.
+در هم‌روش، Build Context باید ریشه مخزن، Dockerfile برابر `./Dockerfile` (یا `./server/Dockerfile`) و پورت سرویس `3000` باشد. Secretهای runtime را در پنل Secret Manager تنظیم کنید؛ هیچ build arg مربوط به دیتابیس یا OAuth لازم نیست.
 
-Supabase Auth و PostgreSQL منبع اصلی داده‌های Production هستند. `localStorage` فقط برای cache و مهاجرت نسخه‌های قبلی نگه داشته می‌شود.
-
-## پنل توسعه شخصی
-
-صفحه «پنل توسعه» فقط برای حسابی نمایش داده می‌شود که در جدول `user_roles` نقش `admin` دارد. نقش از دیتابیس خوانده می‌شود و RLS اجازه ارتقای نقش توسط کاربر عادی را نمی‌دهد. اولین مدیر را فقط از SQL Editor یا محیط امن دارای Service Role تعیین کنید:
-
-```sql
-update public.user_roles set role = 'admin' where user_id = '<AUTH_USER_UUID>';
-```
-
-Service Role Key را هرگز در متغیرهای `VITE_*` یا کد مرورگر قرار ندهید.
-
-## فعال‌سازی ورود با گوگل
-
-1. فایل `.env.example` را با نام `.env` کپی و مقادیر Supabase را وارد کنید.
-2. در Supabase از مسیر `Authentication > Providers > Google` ارائه‌دهنده‌ی Google را فعال کنید.
-3. در Google Cloud، آدرس Callback نمایش‌داده‌شده توسط Supabase را به Authorized redirect URIs اضافه کنید.
-4. آدرس اجرای برنامه (برای توسعه `http://localhost:5173`) را در Redirect URLs بخش Authentication تنظیم کنید.
-5. migration دیتابیس را اعمال کنید:
-
-```bash
-supabase link --project-ref YOUR_PROJECT_REF
-supabase db push
-```
+متغیرهای الزامی Production:
 
 ```env
-VITE_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-VITE_SUPABASE_ANON_KEY=YOUR_SUPABASE_ANON_KEY
+NODE_ENV=production
+PORT=3000
+APP_BASE_URL=https://staging.gavapp.ir
+TRUSTED_ORIGINS=https://staging.gavapp.ir
+DATABASE_URL=postgresql://...
+DATABASE_SSL=require
+BETTER_AUTH_SECRET=...
+ENABLE_GOOGLE_AUTH=true
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
 ```
 
-## فعال‌سازی اعلان‌های Firebase
+`DATABASE_URL`، `BETTER_AUTH_SECRET` و `GOOGLE_CLIENT_SECRET` فقط باید در Secret Manager سرور قرار بگیرند.
 
-1. یک Web App در Firebase بسازید و مقادیر آن را در `.env` قرار دهید.
-2. در `Project settings > Cloud Messaging > Web Push certificates` یک Key Pair بسازید.
-3. مقدار Key Pair را به‌عنوان `VITE_FIREBASE_VAPID_KEY` تنظیم کنید.
-4. در تنظیمات برنامه روی «فعال‌سازی» بزنید تا مجوز مرورگر و FCM Token دریافت شود.
+## Google OAuth
 
-توکن دستگاه در جدول `notification_devices` و با `user_id` ذخیره می‌شود. نسخه محلی نیز برای مهاجرت امن حفظ می‌شود.
+در Google Cloud یک OAuth Client از نوع Web Application بسازید:
 
-## شروع کار و برنامه مالی شخصی
+- Authorized JavaScript origin: `https://staging.gavapp.ir`
+- Authorized redirect URI: `https://staging.gavapp.ir/api/auth/callback/google`
 
-کاربر جدید پس از ورود، یک onboarding سه‌مرحله‌ای برای ثبت درآمد، تعیین هدف پس‌انداز، تخصیص اختیاری مبلغ قابل‌هزینه و مرور نهایی می‌بیند. هر دسته می‌تواند مستقل با مبلغ یا درصد تنظیم شود. اطلاعات در PostgreSQL و با RLS کاربر ذخیره می‌شوند. پس‌انداز نوع تراکنش مستقل دارد و در هزینه‌ها، مصرف بودجه و هشدارهای سقف محاسبه نمی‌شود.
+برای دامنه Production نیز origin و callback متناظر را ثبت کنید.
 
-تراکنش‌ها با تاریخ واقعی شمسی نمایش داده و با تاریخ استاندارد PostgreSQL ذخیره می‌شوند. داده‌های قدیمی `localStorage` پس از اولین ورود به‌شکل idempotent منتقل می‌شوند؛ قیدهای یکتا از رکورد تکراری جلوگیری می‌کنند و اطلاعات محلی حذف نمی‌شود.
+## دیتابیس و نقش Admin
 
-یادآوری شبانه به‌صورت محلی و best-effort اجرا می‌شود: اگر وب‌اپ باز و مجوز Notification فعال باشد، در ساعت انتخابی اعلان نمایش داده می‌شود. ارسال تضمینی وقتی مرورگر بسته است به یک Cloud Function یا backend scheduler نیاز دارد.
+schema در `postgres/migrations` است. migration با advisory lock، checksum و ledger اجرا می‌شود و اجرای دوباره امن است. API برای هر درخواست کاربر، شناسه کاربر را در session دیتابیس قرار می‌دهد و FORCE RLS جداسازی داده‌ها را enforce می‌کند.
+
+پس از اولین ورود، نقش اولین ادمین را فقط با اتصال امن مدیریتی دیتابیس تنظیم کنید:
+
+```sql
+update public.user_roles
+set role = 'admin'
+where user_id = '<BETTER_AUTH_USER_ID>';
+```
+
+## اعلان‌ها
+
+Firebase Cloud Messaging همچنان اختیاری است و فقط مقادیر عمومی `VITE_FIREBASE_*` در زمان build قابل استفاده‌اند. یادآوری محلی مرورگر best-effort است؛ ارسال تضمینی هنگام بسته بودن مرورگر به worker/scheduler سرور نیاز دارد.
 
 ## تست
 
 ```bash
-npm test
 npm run typecheck
+npm test
 npm run build
+
+npm --prefix server run typecheck
+npm --prefix server test
+
+# فقط روی یک دیتابیس disposable
+DATABASE_URL='postgresql://...' npm run test:rls
 ```
 
-برای تست RLS با Supabase CLI:
+تست RLS دیتابیس تست را بازسازی می‌کند؛ هرگز آن را روی دیتابیس staging یا production اجرا نکنید.
 
-```bash
-supabase test db
-```
-
-برای integration روی یک پروژه تست جداگانه، متغیرهای زیر را فقط در محیط shell یا CI امن قرار دهید؛ Service Role هرگز وارد فرانت‌اند نمی‌شود:
-
-```bash
-SUPABASE_URL=... \
-SUPABASE_ANON_KEY=... \
-SUPABASE_SERVICE_ROLE_KEY=... \
-npm run test:integration
-```
+پوشه‌های قدیمی `supabase/` و `integration/` فعلاً فقط برای rollback و انتقال احتمالی داده‌های قبلی نگه داشته شده‌اند و در runtime یا build استفاده نمی‌شوند.

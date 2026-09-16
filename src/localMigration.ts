@@ -58,7 +58,7 @@ export function mergeLegacyTransactions(payloads: LegacyPayload[]) {
   return [...byId.values()];
 }
 
-export async function migrateLocalStorageToSupabase(storage: StorageReader & Pick<Storage, 'setItem'>, userId: string, email: string) {
+export async function migrateLocalStorageToApi(storage: StorageReader & Pick<Storage, 'setItem'>, userId: string, email: string) {
   const activeUserKey = readJson<string>(storage, 'gav-active-user', '');
   const sourceKeys = legacySourceKeys(userId, email, activeUserKey).filter(sourceKey => sourceKey !== 'local-user' || canClaimLocalSource(storage, userId, email));
   const payloads = sourceKeys.map(sourceKey => readLegacyPayload(storage, sourceKey, email)).filter(hasLegacyData);

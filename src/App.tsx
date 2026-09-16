@@ -6,7 +6,7 @@ import {
   Utensils, CarFront, House, ShoppingBag, HeartPulse, Gamepad2, WalletCards,
   X, LogOut, Tags, Moon, ShieldCheck, UserRound,
   LockKeyhole, Mail, Sparkles, CalendarDays, Repeat2,
-  ChevronLeft, ChevronRight, TrendingUp, Wrench, Loader2, RefreshCw, KeyRound,
+  ChevronLeft, ChevronRight, TrendingUp, Wrench, Loader2, RefreshCw,
 } from 'lucide-react';
 import {
   Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
@@ -16,8 +16,7 @@ import {
   Alert, Avatar, Button, Card, Checkbox, ConfigProvider, Empty, Form, Input, InputNumber,
   List, Modal, Result, Segmented, Select, Spin, Switch, Tabs,
 } from 'antd';
-import { sendPasswordReset, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, supabase, updatePassword } from './supabase';
-import type { User } from '@supabase/supabase-js';
+import { getCurrentUser, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, type User } from './auth';
 import { enablePushNotifications, listenForForegroundNotifications, notificationPermission } from './firebaseMessaging';
 import { categoryEmoji } from './categoryEmoji';
 import { jalaaliMonthLength, toJalaali } from 'jalaali-js';
@@ -32,7 +31,7 @@ import {
   deleteCloudTransaction, loadCloudUserData, saveCloudAppSettings, saveCloudBudgets, saveCloudFinancialSetup,
   saveCloudProfile, saveCloudTransaction, saveNotificationDevice, type CloudUserData,
 } from './database';
-import { migrateLocalStorageToSupabase } from './localMigration';
+import { migrateLocalStorageToApi } from './localMigration';
 import { persistThenCommit } from './cloudMutation';
 
 const Onboarding = lazy(() => import('./Onboarding'));
@@ -147,9 +146,7 @@ const onboardingSlides = [
 
 export default function App() {
   const isDesignReviewRoute = window.location.pathname.replace(/\/+$/, '') === '/dev/review';
-  const localDevelopmentMode = import.meta.env.DEV && !supabase;
   const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-onboarding-complete-v1', false);
-  const [localDemoAuthenticated, setLocalDemoAuthenticated] = useStoredState<boolean>('gav-authenticated', false);
   const [activeUserKey, setActiveUserKey] = useStoredState<string>('gav-active-user', 'local-user');
   const [page, setPage] = useState<Page>('dashboard');
   const [transactions, setTransactions] = useStoredState<Transaction[]>(`gav-transactions-v2:${activeUserKey}`, initialTransactions);
@@ -169,16 +166,15 @@ export default function App() {
     return jalaliDateKey(today.year, today.month, today.day);
   });
   const [toast, setToast] = useState('');
-  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated' | 'error'>(localDevelopmentMode ? localDemoAuthenticated ? 'authenticated' : 'unauthenticated' : supabase ? 'loading' : 'error');
-  const [dataStatus, setDataStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>(localDevelopmentMode ? 'ready' : 'idle');
-  const [authError, setAuthError] = useState(supabase || localDevelopmentMode ? '' : 'اتصال Supabase تنظیم نشده است. فایل محیطی Production را کامل کن.');
+  const [authStatus, setAuthStatus] = useState<'loading' | 'authenticated' | 'unauthenticated' | 'error'>('loading');
+  const [dataStatus, setDataStatus] = useState<'idle' | 'loading' | 'ready' | 'error'>('idle');
+  const [authError, setAuthError] = useState('');
   const [dataError, setDataError] = useState('');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [databaseRole, setDatabaseRole] = useState<'user' | 'admin'>('user');
-  const [passwordRecovery, setPasswordRecovery] = useState(false);
   const hydratedUserRef = useRef('');
   const activeFinancialSetup = normalizeFinancialSetup(financialSetup);
-  const canAccessDevPanel = databaseRole === 'admin' || localDevelopmentMode;
+  const canAccessDevPanel = databaseRole === 'admin';
 
   useEffect(() => {
     document.documentElement.style.setProperty('--brand-accent', devSettings.accentColor || defaultDevSettings.accentColor);
@@ -236,7 +232,7 @@ export default function App() {
     setDataError('');
     setActiveUserKey(user.id);
     try {
-      await migrateLocalStorageToSupabase(localStorage, user.id, user.email || '');
+      await migrateLocalStorageToApi(localStorage, user.id, user.email);
       const cloud = await loadCloudUserData(user);
       applyCloudData(user.id, cloud);
       hydratedUserRef.current = user.id;
@@ -250,27 +246,21 @@ export default function App() {
   };
 
   const retrySession = async () => {
-    if (localDevelopmentMode) {
-      setAuthStatus(localDemoAuthenticated ? 'authenticated' : 'unauthenticated');
-      setDataStatus('ready');
-      setAuthError('');
-      return;
-    }
-    if (!supabase) return setAuthError('اتصال Supabase تنظیم نشده است.');
     setAuthStatus('loading');
     setAuthError('');
     try {
-      const { data, error } = await supabase.auth.getSession();
-      if (error) throw error;
-      if (!data.session) {
+      const user = await getCurrentUser();
+      if (!user) {
+        hydratedUserRef.current = '';
         setCurrentUser(null);
         setAuthStatus('unauthenticated');
+        setDataStatus('idle');
         return;
       }
-      setCurrentUser(data.session.user);
+      setCurrentUser(user);
       setAuthStatus('authenticated');
       hydratedUserRef.current = '';
-      await hydrateCloudUser(data.session.user);
+      await hydrateCloudUser(user);
     } catch (error) {
       setAuthError(error instanceof Error ? error.message : 'بررسی نشست کاربر انجام نشد.');
       setAuthStatus('error');
@@ -278,38 +268,32 @@ export default function App() {
   };
 
   useEffect(() => {
-    if (!supabase) return;
     let active = true;
-    supabase.auth.getSession().then(async ({ data, error }) => {
+    const sessionExpired = () => {
+      hydratedUserRef.current = '';
+      setCurrentUser(null);
+      setDatabaseRole('user');
+      setDataStatus('idle');
+      setAuthStatus('unauthenticated');
+    };
+    window.addEventListener('gav:session-expired', sessionExpired);
+    getCurrentUser().then(async user => {
       if (!active) return;
-      if (error) {
-        setAuthError(error.message);
-        setAuthStatus('error');
-        return;
-      }
-      if (!data.session) {
-        setAuthStatus('unauthenticated');
-        return;
-      }
-      setCurrentUser(data.session.user);
-      setAuthStatus('authenticated');
-      if (hydratedUserRef.current !== data.session.user.id) await hydrateCloudUser(data.session.user).catch(() => undefined);
-    });
-    const { data } = supabase.auth.onAuthStateChange((event, session) => {
-      if (!active) return;
-      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
-      if (!session) {
-        hydratedUserRef.current = '';
+      if (!user) {
         setCurrentUser(null);
         setAuthStatus('unauthenticated');
         setDataStatus('idle');
         return;
       }
-      setCurrentUser(session.user);
+      setCurrentUser(user);
       setAuthStatus('authenticated');
-      if (hydratedUserRef.current !== session.user.id) hydrateCloudUser(session.user).catch(() => undefined);
+      if (hydratedUserRef.current !== user.id) await hydrateCloudUser(user).catch(() => undefined);
+    }).catch(error => {
+      if (!active) return;
+      setAuthError(error instanceof Error ? error.message : 'بررسی نشست کاربر انجام نشد.');
+      setAuthStatus('error');
     });
-    return () => { active = false; data.subscription.unsubscribe(); };
+    return () => { active = false; window.removeEventListener('gav:session-expired', sessionExpired); };
   }, []);
 
   useEffect(() => {
@@ -359,7 +343,7 @@ export default function App() {
   }, [authStatus, activeFinancialSetup?.reminder.enabled, activeFinancialSetup?.reminder.time]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    if (!currentUser && !localDevelopmentMode) return;
+    if (!currentUser) return;
     const next = { ...transaction, id: crypto.randomUUID() };
     try {
       if (currentUser) await saveCloudTransaction(currentUser.id, next);
@@ -375,7 +359,7 @@ export default function App() {
   };
 
   const updateTransaction = async (transaction: Omit<Transaction, 'id'>) => {
-    if (!editingTransaction || (!currentUser && !localDevelopmentMode)) return;
+    if (!editingTransaction || !currentUser) return;
     const next = { ...transaction, id: editingTransaction.id };
     try {
       if (currentUser) await saveCloudTransaction(currentUser.id, next);
@@ -395,34 +379,23 @@ export default function App() {
   if (!isDesignReviewRoute && !onboardingComplete && devSettings.showIntroOnboarding) return withTheme(<IntroOnboarding onComplete={() => setOnboardingComplete(true)} />);
   if (authStatus === 'loading') return <FullPageState title="در حال بررسی حساب" description="نشست امن شما در حال بازیابی است." loading/>;
   if (authStatus === 'error') return <FullPageState title="اتصال حساب انجام نشد" description={authError} actionLabel="تلاش دوباره" onAction={retrySession}/>;
-  if (authStatus === 'unauthenticated') return <AuthScreen localMode={localDevelopmentMode} onLocalLogin={(nextProfile) => {
-    const userKey = `email:${nextProfile.email.trim().toLowerCase()}`;
-    let storedProfile: UserProfile | null = null;
-    try { storedProfile = JSON.parse(localStorage.getItem(profileStorageKey(userKey)) || 'null') as UserProfile | null; } catch { storedProfile = null; }
-    const resolvedProfile: UserProfile = {
-      name: nextProfile.name.trim() || storedProfile?.name?.trim() || nextProfile.email.trim(),
-      email: nextProfile.email.trim(),
-      avatarUrl: storedProfile?.avatarUrl || nextProfile.avatarUrl || avatarOptions[0],
-    };
-    localStorage.setItem(profileStorageKey(userKey), JSON.stringify(resolvedProfile));
-    setActiveUserKey(userKey);
-    setProfile(resolvedProfile);
-    setLocalDemoAuthenticated(true);
+  if (authStatus === 'unauthenticated') return <AuthScreen onAuthenticated={async user => {
+    setCurrentUser(user);
     setAuthStatus('authenticated');
-    setDataStatus('ready');
+    hydratedUserRef.current = '';
+    await hydrateCloudUser(user);
   }} onGoogleLogin={signInWithGoogle} settings={devSettings} />;
-  if (passwordRecovery) return <PasswordRecoveryScreen onComplete={() => setPasswordRecovery(false)}/>;
   if (dataStatus === 'loading' || dataStatus === 'idle') return <FullPageState title="در حال آماده‌سازی اطلاعات" description="اطلاعات مالی امن شما در حال دریافت است." loading/>;
   if (dataStatus === 'error') return <FullPageState title="دریافت اطلاعات انجام نشد" description={dataError} actionLabel="تلاش دوباره" onAction={() => currentUser && hydrateCloudUser(currentUser).catch(() => undefined)}/>;
-  if (!currentUser && !localDevelopmentMode) return <FullPageState title="نشست کاربر نامعتبر است" description="برای بازیابی نشست امن دوباره تلاش کن." actionLabel="تلاش دوباره" onAction={retrySession}/>;
+  if (!currentUser) return <FullPageState title="نشست کاربر نامعتبر است" description="برای بازیابی نشست امن دوباره تلاش کن." actionLabel="تلاش دوباره" onAction={retrySession}/>;
 
   if (isDesignReviewRoute) {
-    if (!currentUser || databaseRole !== 'admin') return withTheme(<main className="review-access-denied"><Result status="403" title="دسترسی محدود" subTitle="این مسیر فقط برای ادمینی فعال است که نقش او توسط Supabase و RLS تأیید شده باشد." extra={<Button type="primary" onClick={() => window.location.assign('/')}>بازگشت به برنامه</Button>}/></main>);
+    if (!currentUser || databaseRole !== 'admin') return withTheme(<main className="review-access-denied"><Result status="403" title="دسترسی محدود" subTitle="این مسیر فقط برای ادمینی فعال است که نقش او توسط دیتابیس و RLS تأیید شده باشد." extra={<Button type="primary" onClick={() => window.location.assign('/')}>بازگشت به برنامه</Button>}/></main>);
     return withTheme(<Suspense fallback={lazyFallback}><DesignReviewPanel userId={currentUser.id} onExit={() => window.location.assign('/')}/></Suspense>);
   }
 
   const completeSetup = async (setup: FinancialSetup) => {
-    if (!currentUser && !localDevelopmentMode) return;
+    if (!currentUser) return;
     const nextBudgets = budgetsFromFinancialSetup(setup);
     try {
       if (currentUser) {
@@ -450,7 +423,7 @@ export default function App() {
   const appCategories = [...expenseCategories, categories.find(category => category.name === 'حقوق')!];
   const visibleNavItems = canAccessDevPanel ? [...navItems, { id: 'dev' as const, label: 'پنل توسعه', icon: Wrench }] : navItems;
   const removeTransaction = async (id: string) => {
-    if (!currentUser && !localDevelopmentMode) return;
+    if (!currentUser) return;
     try {
       if (currentUser) await deleteCloudTransaction(currentUser.id, id);
       setTransactions(transactions.filter(transaction => transaction.id !== id));
@@ -504,12 +477,16 @@ export default function App() {
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
           {page === 'budgets' && <Budgets month={selectedMonth} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} weeklyBudgets={weeklyBudgets} setWeeklyBudgets={updateWeeklyBudgetMap} notify={notify} />}
-          {page === 'settings' && <SettingsPage userId={currentUser?.id || activeUserKey} cloudEnabled={Boolean(currentUser)} financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
-          {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={() => {
-            if (localDevelopmentMode) {
-              setLocalDemoAuthenticated(false);
+          {page === 'settings' && <SettingsPage userId={currentUser.id} cloudEnabled financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
+          {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={async () => {
+            try {
+              await signOut();
+              hydratedUserRef.current = '';
+              setCurrentUser(null);
+              setDatabaseRole('user');
+              setDataStatus('idle');
               setAuthStatus('unauthenticated');
-            } else signOut().catch(error => notify(error instanceof Error ? error.message : 'خروج انجام نشد.'));
+            } catch (error) { notify(error instanceof Error ? error.message : 'خروج انجام نشد.'); }
           }} />}
           {page === 'dev' && canAccessDevPanel && <Suspense fallback={lazyFallback}><DevPanel settings={devSettings} setSettings={updateDevSettings} isLocalDevelopment={import.meta.env.DEV} notify={notify}/></Suspense>}
         </div>
@@ -527,23 +504,6 @@ export default function App() {
 
 function FullPageState({ title, description, loading, actionLabel, onAction }: { title: string; description: string; loading?: boolean; actionLabel?: string; onAction?: () => void }) {
   return <main className="system-state-page" dir="rtl"><Card className="system-state-card ant-system-state"><BrandMark/>{loading ? <Spin size="large"/> : <Result status="warning" title={title} subTitle={description} extra={actionLabel && onAction ? <Button type="primary" icon={<RefreshCw size={17}/>} onClick={onAction}>{actionLabel}</Button> : undefined}/>} {loading && <><h1>{title}</h1><p>{description}</p></>}</Card></main>;
-}
-
-function PasswordRecoveryScreen({ onComplete }: { onComplete: () => void }) {
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  const [saving, setSaving] = useState(false);
-  const submit = async () => {
-    if (password.length < 8) return setError('رمز جدید باید حداقل ۸ کاراکتر باشد.');
-    if (password !== confirmPassword) return setError('تکرار رمز عبور یکسان نیست.');
-    setSaving(true);
-    setError('');
-    try { await updatePassword(password); onComplete(); }
-    catch (err) { setError(err instanceof Error ? err.message : 'تغییر رمز عبور انجام نشد.'); }
-    finally { setSaving(false); }
-  };
-  return <main className="system-state-page" dir="rtl"><Card className="system-state-card recovery-card"><Form layout="vertical" onFinish={submit} requiredMark={false}><div className="recovery-icon"><KeyRound size={25}/></div><h1>رمز عبور جدید</h1><p>برای حساب خود یک رمز امن انتخاب کن.</p><Form.Item label="رمز جدید" required><Input.Password value={password} onChange={event => setPassword(event.target.value)} autoComplete="new-password"/></Form.Item><Form.Item label="تکرار رمز جدید" required><Input.Password value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} autoComplete="new-password"/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" htmlType="submit" loading={saving} icon={!saving ? <Check size={18}/> : undefined}>ذخیره رمز جدید</Button></Form></Card></main>;
 }
 
 function IntroOnboarding({ onComplete }: { onComplete: () => void }) {
@@ -564,13 +524,12 @@ function IntroOnboarding({ onComplete }: { onComplete: () => void }) {
   </main>;
 }
 
-function AuthScreen({ localMode, onLocalLogin, onGoogleLogin, settings }: { localMode: boolean; onLocalLogin: (profile: UserProfile) => void; onGoogleLogin: () => Promise<void>; settings: DevSettings }) {
+function AuthScreen({ onAuthenticated, onGoogleLogin, settings }: { onAuthenticated: (user: User) => Promise<void>; onGoogleLogin: () => Promise<void>; settings: DevSettings }) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -578,19 +537,14 @@ function AuthScreen({ localMode, onLocalLogin, onGoogleLogin, settings }: { loca
     event.preventDefault();
     if (mode === 'signup' && name.trim().length < 2) return setError('نام و نام خانوادگی را وارد کن.');
     if (!email.includes('@')) return setError('یک ایمیل معتبر وارد کن.');
-    if (password.length < 6) return setError('رمز عبور باید حداقل ۶ کاراکتر باشد.');
+    if (password.length < 8) return setError('رمز عبور باید حداقل ۸ کاراکتر باشد.');
     setError('');
-    setSuccess('');
     setSubmitting(true);
     try {
-      if (localMode) {
-        onLocalLogin({ name: mode === 'signup' ? name.trim() : '', email: email.trim(), avatarUrl: avatarOptions[0] });
-        return;
-      }
-      if (mode === 'signup') {
-        const result = await signUpWithEmail(email, password, name);
-        if (!result.session) setSuccess('لینک تأیید حساب برایت ایمیل شد. بعد از تأیید وارد شو.');
-      } else await signInWithEmail(email, password);
+      const user = mode === 'signup'
+        ? await signUpWithEmail(email, password, name)
+        : await signInWithEmail(email, password);
+      await onAuthenticated(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ارتباط با سرویس ورود انجام نشد. دوباره تلاش کن.');
     } finally { setSubmitting(false); }
@@ -599,20 +553,6 @@ function AuthScreen({ localMode, onLocalLogin, onGoogleLogin, settings }: { loca
   const switchMode = (next: 'login' | 'signup') => {
     setMode(next);
     setError('');
-    setSuccess('');
-  };
-
-  const resetPassword = async () => {
-    if (!email.includes('@')) return setError('ابتدا ایمیل حسابت را وارد کن.');
-    if (localMode) return setSuccess('بازیابی رمز عبور در حالت تست محلی نیاز به تنظیم Supabase دارد.');
-    setSubmitting(true);
-    setError('');
-    setSuccess('');
-    try {
-      await sendPasswordReset(email);
-      setSuccess('لینک بازیابی رمز عبور برایت ایمیل شد.');
-    } catch (err) { setError(err instanceof Error ? err.message : 'ارسال لینک بازیابی انجام نشد.'); }
-    finally { setSubmitting(false); }
   };
 
   const googleLogin = async () => {
@@ -635,15 +575,13 @@ function AuthScreen({ localMode, onLocalLogin, onGoogleLogin, settings }: { loca
     <section className="auth-form-side">
       <div className="auth-mobile-brand"><BrandMark /><strong>{settings.appName}</strong></div>
       <form className="auth-card" onSubmit={submit}>
-        {localMode && <div className="local-mode-note">حالت تست محلی فعال است؛ پس از تنظیم Supabase، همین فرم به ورود واقعی متصل می‌شود.</div>}
         <div className="auth-heading"><span>{mode === 'login' ? 'خوش برگشتی!' : 'شروع یک مسیر تازه'}</span><h2>{mode === 'login' ? 'ورود به حساب کاربری' : 'ساخت حساب کاربری'}</h2><p>{mode === 'login' ? 'اطلاعاتت را وارد کن تا به داشبورد برگردی.' : 'کمتر از یک دقیقه تا مدیریت بهتر پول‌هایت فاصله داری.'}</p></div>
         <Segmented className="auth-tabs-ant" block value={mode} options={[{ label: 'ورود', value: 'login' }, { label: 'ثبت‌نام', value: 'signup' }]} onChange={value => switchMode(value as 'login' | 'signup')}/>
         {mode === 'signup' && <label className="auth-field">نام و نام خانوادگی<Input className="auth-ant-input" prefix={<CircleDollarSign size={18}/>} value={name} onChange={e => setName(e.target.value)} placeholder="مثلاً هدیه شفاعی" autoComplete="name"/></label>}
         <label className="auth-field">ایمیل<Input className="auth-ant-input ltr-input" prefix={<Mail size={18}/>} type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="name@example.com" autoComplete="email"/></label>
-        <label className="auth-field">رمز عبور<Input.Password className="auth-ant-input ltr-input" prefix={<LockKeyhole size={18}/>} value={password} onChange={e => setPassword(e.target.value)} placeholder="حداقل ۶ کاراکتر" autoComplete={mode === 'login' ? 'current-password' : 'new-password'}/></label>
-        {mode === 'login' && <div className="auth-options"><Checkbox defaultChecked>مرا به خاطر بسپار</Checkbox><Button type="link" onClick={resetPassword} disabled={submitting}>رمزت را فراموش کردی؟</Button></div>}
+        <label className="auth-field">رمز عبور<Input.Password className="auth-ant-input ltr-input" prefix={<LockKeyhole size={18}/>} value={password} onChange={e => setPassword(e.target.value)} placeholder="حداقل ۸ کاراکتر" autoComplete={mode === 'login' ? 'current-password' : 'new-password'}/></label>
+        {mode === 'login' && <div className="auth-options"><Checkbox defaultChecked>مرا به خاطر بسپار</Checkbox></div>}
         {error && <Alert className="auth-ant-alert" type="error" showIcon message={error}/>}
-        {success && <Alert className="auth-ant-alert" type="success" showIcon message={success}/>}
         <Button className="auth-submit" type="primary" htmlType="submit" loading={submitting}>{mode === 'login' ? 'ورود به گاو' : 'ساخت حساب و شروع'}{!submitting && <span>←</span>}</Button>
         <div className="auth-divider"><span>یا ادامه با</span></div>
         <Button className="google-button" onClick={googleLogin} loading={googleLoading}><span className="google-mark">G</span> ادامه با حساب گوگل</Button>

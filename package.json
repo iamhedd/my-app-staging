@@ -8,13 +8,12 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "typecheck": "tsc -b",
-    "test": "vitest run",
-    "test:rls": "supabase test db",
-    "test:integration": "RUN_SUPABASE_INTEGRATION=1 vitest run integration/supabase.rls.integration.test.ts"
+    "test": "vitest run --dir src",
+    "test:rls": "bash postgres/test.sh",
+    "test:integration": "npm --prefix server test"
   },
   "dependencies": {
     "@ant-design/v5-patch-for-react-19": "^1.0.3",
-    "@supabase/supabase-js": "^2.116.0",
     "@vitejs/plugin-react": "latest",
     "antd": "^5.29.3",
     "firebase": "^12.19.0",

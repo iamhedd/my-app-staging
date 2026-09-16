@@ -1,5 +1,5 @@
-# Build with the repository root as context:
-# docker build -t gav-app .
+# Build with repository root as context:
+# docker build -f server/Dockerfile -t gav-app .
 
 FROM node:22-alpine AS web-dependencies
 WORKDIR /workspace

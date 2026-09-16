@@ -12,7 +12,6 @@ export default defineConfig({
           if (id.includes('/rc-')) return 'antd-components';
           if (id.includes('/@ant-design/')) return 'antd-runtime';
           if (id.includes('/recharts/') || id.includes('/d3-')) return 'charts-vendor';
-          if (id.includes('/@supabase/')) return 'supabase-vendor';
           if (id.includes('/firebase/')) return 'firebase-vendor';
           if (id.includes('/react/') || id.includes('/react-dom/')) return 'react-vendor';
         },
