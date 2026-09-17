@@ -802,3 +802,48 @@ body{color:var(--ink)}
   .selected-week-numbers>span{font-size:7px}.selected-week-numbers strong{font-size:9px}
   .budget-month-reference{font-size:7px}.budget-week-line strong{font-size:12px}
 }
+
+/* Mobile budget view — remove repeated detail and keep one clear hierarchy */
+@media(max-width:650px){
+  .page-budgets .budget-hero{padding:14px 15px;margin-bottom:10px}
+  .page-budgets .budget-hero-copy{margin-bottom:8px}
+  .page-budgets .budget-summary-values{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:0;padding-top:0}
+  .page-budgets .budget-summary-values>div{gap:1px}
+  .page-budgets .budget-summary-values strong{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .page-budgets .month-week-plan{padding:11px 12px;border-radius:12px}
+  .page-budgets .month-week-plan-head{align-items:center;margin-bottom:8px}
+  .page-budgets .month-week-plan-head h2{margin:0;font-size:12px}
+  .page-budgets .month-week-plan-head p{display:none}
+  .page-budgets .month-week-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:7px}
+  .page-budgets .month-week-grid>button{height:38px;min-height:38px;padding:4px;border-radius:8px}
+  .page-budgets .month-week-grid>button span{font-size:8px}
+  .page-budgets .month-week-grid>button strong{display:none}
+  .page-budgets .month-week-grid>button em{font-size:6px}
+  .page-budgets .selected-week-summary{padding:0;background:transparent;border-radius:0}
+  .page-budgets .selected-week-label{width:100%;align-items:center;flex-direction:row;justify-content:space-between}
+  .page-budgets .selected-week-label>span{font-size:7px}
+  .page-budgets .selected-week-label>strong{font-size:9px}
+  .page-budgets .selected-week-numbers{display:none}
+
+  .page-budgets .budget-category-heading{margin:0 1px 7px}
+  .page-budgets .budget-category-heading h2{font-size:12px}
+  .page-budgets .budget-category-heading p{display:none}
+  .page-budgets .budget-list{gap:8px}
+  .page-budgets .budget-item{min-height:108px;padding:11px 12px;gap:7px;border-radius:12px}
+  .page-budgets .budget-item-head{grid-template-columns:36px minmax(0,1fr) 30px;gap:8px}
+  .page-budgets .budget-item-head .category-icon.emoji-icon{width:36px;height:36px;border-radius:10px;font-size:18px}
+  .page-budgets .budget-card-copy>strong{font-size:12px}
+  .page-budgets .budget-edit-button{width:30px!important;height:30px!important;min-width:30px}
+  .page-budgets .budget-week-line{gap:10px}
+  .page-budgets .budget-week-line span{font-size:7px}
+  .page-budgets .budget-week-line strong{font-size:11px}
+  .page-budgets .budget-progress{height:5px}
+}
+
+@media(max-width:340px){
+  .page-budgets .budget-hero{padding-inline:12px}
+  .page-budgets .budget-summary-values strong{font-size:9px}
+  .page-budgets .month-week-plan{padding-inline:9px}
+  .page-budgets .budget-week-line strong{font-size:10px}
+}
