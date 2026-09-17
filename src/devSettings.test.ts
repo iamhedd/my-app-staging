@@ -13,7 +13,7 @@ describe('normalizeDevSettings', () => {
 
 describe('dashboardGreetingText', () => {
   it('always greets the resolved user name even with an old literal template', () => {
-    expect(dashboardGreetingText('سلام {name}، خوش آمدی!', 'هدیه')).toBe('سلام هدیه، خوش آمدی!');
-    expect(dashboardGreetingText('سلام کاربر گاو، خوش آمدی!', 'هدیه')).toBe('سلام هدیه، خوش آمدی!');
+    expect(dashboardGreetingText('سلام {name}، خوش آمدی!', 'هدیه')).toBe('هدیه، خوش آمدی!');
+    expect(dashboardGreetingText('سلام کاربر گاو، خوش آمدی!', 'هدیه')).toBe('هدیه، خوش آمدی!');
   });
 });

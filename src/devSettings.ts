@@ -22,7 +22,7 @@ export const defaultDevSettings: DevSettings = {
   authHighlight: 'بهتر بشناس.',
   authDescription: 'هزینه‌ها را ثبت کن، برای هدفت بودجه بساز و با خیال راحت‌تر برای آینده تصمیم بگیر.',
   authQuote: '«کنترل مالی از دیدن واضح شروع می‌شود.»',
-  dashboardGreeting: 'سلام {name}، خوش آمدی!',
+  dashboardGreeting: '{name}، خوش آمدی!',
   dashboardDescription: 'این‌جا تصویر روشنی از وضعیت مالی {month} داری.',
   addTransactionLabel: 'تراکنش جدید',
   accentColor: '#DF7899',
@@ -42,7 +42,8 @@ export function interpolateDevText(template: string, values: Record<string, stri
 
 export function dashboardGreetingText(template: string, name: string) {
   const displayName = name.trim() || 'کاربر گاو';
-  return template.includes('{name}')
+  const greeting = template.includes('{name}')
     ? interpolateDevText(template, { name: displayName })
     : interpolateDevText(defaultDevSettings.dashboardGreeting, { name: displayName });
+  return greeting.replace(/^سلام[\s،،]*/u, '');
 }
