@@ -18,13 +18,16 @@ export async function showBrowserNotification(payload: BrowserNotificationPayloa
   };
 
   if ('serviceWorker' in navigator) {
-    const registration = await navigator.serviceWorker.getRegistration();
-    if (registration) {
+    try {
+      const registration = await navigator.serviceWorker.getRegistration()
+        || await navigator.serviceWorker.register('/firebase-messaging-sw.js');
       await registration.showNotification(payload.title, options);
       return true;
-    }
+    } catch { /* Fall back to the desktop Notification API below. */ }
   }
 
-  new Notification(payload.title, options);
-  return true;
+  try {
+    new Notification(payload.title, options);
+    return true;
+  } catch { return false; }
 }

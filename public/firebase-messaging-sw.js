@@ -1,6 +1,4 @@
 /* global firebase */
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
 const params = new URL(self.location.href).searchParams;
 const firebaseConfig = {
@@ -12,21 +10,30 @@ const firebaseConfig = {
   appId: params.get('appId'),
 };
 
-firebase.initializeApp(firebaseConfig);
-const messaging = firebase.messaging();
+const firebaseEnabled = Boolean(
+  firebaseConfig.apiKey && firebaseConfig.projectId &&
+  firebaseConfig.messagingSenderId && firebaseConfig.appId,
+);
 
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || payload.data?.title || 'گاو';
-  const options = {
-    body: payload.notification?.body || payload.data?.body || 'یک اعلان جدید داری.',
-    icon: '/gav-logo.png',
-    badge: '/notification-icon.svg',
-    data: { url: payload.data?.url || '/' },
-    dir: 'rtl',
-    lang: 'fa',
-  };
-  self.registration.showNotification(title, options);
-});
+if (firebaseEnabled) {
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
+  importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
+  firebase.initializeApp(firebaseConfig);
+  const messaging = firebase.messaging();
+
+  messaging.onBackgroundMessage((payload) => {
+    const title = payload.notification?.title || payload.data?.title || 'گاو';
+    const options = {
+      body: payload.notification?.body || payload.data?.body || 'یک اعلان جدید داری.',
+      icon: '/gav-logo.png',
+      badge: '/notification-icon.svg',
+      data: { url: payload.data?.url || '/' },
+      dir: 'rtl',
+      lang: 'fa',
+    };
+    self.registration.showNotification(title, options);
+  });
+}
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
