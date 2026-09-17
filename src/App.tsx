@@ -730,7 +730,7 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
   });
   const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
   const hasComparisonData = comparison.some(item => item.expense > 0 || item.savings > 0);
-  return <div className="reports-page"><PageHeader title="گزارش‌ها" description="الگوی خرج‌کردنت را ببین و تصمیم‌های دقیق‌تری بگیر." />
+  return <div className="reports-page"><PageHeader title="گزارش‌ها" description="الگوی خرج‌کردنت رو کشف کن و یه کم باهوش‌تر تصمیم بگیر." />
     <section className="report-summary savings-report" aria-label={`خلاصه مالی ${month.label}`}>
       <div><span>درآمد ثبت‌شده</span><strong className="green">{formatMoney(income).replace(' تومان','')}</strong></div>
       <div><span>هزینه این ماه</span><strong className="red">{formatMoney(expense).replace(' تومان','')}</strong></div>
@@ -743,7 +743,7 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
       <div className="chart-legend"><span><i className="expense-dot"/>هزینه</span><span><i className="savings-dot"/>پس‌انداز</span></div>
     </section>
     <section className="panel report-category-card">
-      <PanelTitle title="دسته‌های پرخرج" subtitle={`رتبه‌بندی ${month.label}`}/>
+      <PanelTitle title="پرخرج‌ترین‌ها" subtitle={`رتبه‌بندی ${month.label}`}/>
       <div className="category-bars">{data.length ? data.slice(0, 3).map(c => <div key={c.name}><div><span>{c.name}</span><b>{formatMoney(c.value).replace(' تومان','')}</b></div><div className="bar"><i style={{width:`${c.value/Math.max(data[0].value, 1)*100}%`}}/></div></div>) : <div className="empty-state compact"><p>هنوز هزینه‌ای برای این ماه ثبت نشده است.</p></div>}</div>
     </section>
   </div>;
