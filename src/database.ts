@@ -24,6 +24,7 @@ export type DesignReviewComment = {
 
 export type CloudUserData = {
   profile: CloudProfile;
+  profileNeedsSync: boolean;
   role: 'user' | 'admin';
   transactions: Transaction[];
   budgets: BudgetMap;
@@ -77,7 +78,14 @@ function moneyString(value: number, field: string, positive = false) {
 }
 
 export function resolveProfileName(storedName: string | null | undefined, user: Pick<User, 'email' | 'name'>) {
-  return storedName?.trim() || user.name?.trim() || user.email.trim() || 'کاربر گاو';
+  const stored = storedName?.trim() || '';
+  const email = user.email.trim();
+  const emailLocalPart = email.split('@')[0] || '';
+  const isGeneratedFallback = !stored
+    || stored === 'کاربر گاو'
+    || stored.toLocaleLowerCase('en') === email.toLocaleLowerCase('en')
+    || stored.toLocaleLowerCase('en') === emailLocalPart.toLocaleLowerCase('en');
+  return (!isGeneratedFallback ? stored : '') || user.name?.trim() || email || 'کاربر گاو';
 }
 
 export async function loadCloudUserData(user: User): Promise<CloudUserData> {
@@ -123,12 +131,14 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
     }
   }
   const apiProfile = data.profile;
+  const resolvedProfileName = resolveProfileName(apiProfile?.name, user);
   return {
     profile: {
-      name: resolveProfileName(apiProfile?.name, user),
+      name: resolvedProfileName,
       email: apiProfile?.email?.trim() || user.email,
       avatarUrl: apiProfile?.avatarUrl || user.image || '/avatars/cow-01.png',
     },
+    profileNeedsSync: Boolean(apiProfile?.name?.trim()) && apiProfile?.name?.trim() !== resolvedProfileName,
     role: data.role === 'admin' ? 'admin' : 'user',
     transactions,
     budgets,

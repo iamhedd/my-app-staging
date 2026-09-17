@@ -25,7 +25,7 @@ import {
 } from './notificationRules';
 import { categoryEmoji } from './categoryEmoji';
 import { jalaaliMonthLength } from 'jalaali-js';
-import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
+import { dashboardGreetingText, defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
@@ -38,6 +38,7 @@ import {
 } from './database';
 import { migrateLocalStorageToApi } from './localMigration';
 import { persistThenCommit } from './cloudMutation';
+import { millisecondsUntilNextGreeting, timeGreeting } from './timeGreeting';
 
 const Onboarding = lazy(() => import('./Onboarding'));
 const DevPanel = lazy(() => import('./DevPanel'));
@@ -236,6 +237,7 @@ export default function App() {
     try {
       await migrateLocalStorageToApi(localStorage, user.id, user.email);
       const cloud = await loadCloudUserData(user);
+      if (cloud.profileNeedsSync) await saveCloudProfile(user.id, cloud.profile);
       applyCloudData(user.id, cloud);
       hydratedUserRef.current = user.id;
       setDataStatus('ready');
@@ -630,6 +632,18 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string;
 }
 
 function Dashboard({ settings, profile, month, plan, categoryOptions, transactions, income, expense, savings, setPage, openAdd }: { settings: DevSettings; profile: UserProfile; month: JalaliMonth; plan: FinancialSetup; categoryOptions: Category[]; transactions: Transaction[]; income: number; expense: number; savings: number; setPage: (p: Page) => void; openAdd: () => void }) {
+  const [dayPeriodGreeting, setDayPeriodGreeting] = useState(() => timeGreeting());
+  useEffect(() => {
+    let timeoutId: number;
+    const scheduleNextGreeting = () => {
+      timeoutId = window.setTimeout(() => {
+        setDayPeriodGreeting(timeGreeting());
+        scheduleNextGreeting();
+      }, millisecondsUntilNextGreeting() + 50);
+    };
+    scheduleNextGreeting();
+    return () => window.clearTimeout(timeoutId);
+  }, []);
   const expenses = transactions.filter(t => t.type === 'expense');
   const savingsTarget = calculateSavingsAmount(plan.monthlyIncome, plan.savingsPercentBps);
   const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
@@ -643,14 +657,13 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
       return parsedDay >= day && parsedDay < nextDay;
     }).reduce((sum, t) => sum + t.amount, 0) / 1000),
   }));
-  const todayLabel = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date());
   const compactCards: Array<{ label: string; value: number; type: 'income' | 'expense' | 'savings'; note: string }> = [
     { label: 'درآمد برنامه‌ریزی‌شده', value: plan.monthlyIncome, type: 'income', note: income ? `${formatMoney(income)} درآمد ثبت‌شده` : 'مبنای برنامه‌ی مالی این ماه' },
     { label: 'مجموع هزینه', value: expense, type: 'expense', note: expense ? 'هزینه ثبت‌شده در این ماه' : 'هنوز هزینه‌ای ثبت نشده' },
     { label: 'پس‌انداز هدف', value: savingsTarget, type: 'savings', note: `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(plan.savingsPercentBps / 100)}٪ هدف · ${formatMoney(savings)} ثبت‌شده` },
   ];
   return <>
-    <PageHeader eyebrow={todayLabel} title={interpolateDevText(settings.dashboardGreeting, { name: profile.name })} description={interpolateDevText(settings.dashboardDescription, { month: month.label })} action={<Button type="primary" className="desktop-add" icon={<Plus size={19}/>} onClick={openAdd}>{settings.addTransactionLabel}</Button>} />
+    <PageHeader eyebrow={dayPeriodGreeting} title={dashboardGreetingText(settings.dashboardGreeting, profile.name)} description={interpolateDevText(settings.dashboardDescription, { month: month.label })} action={<Button type="primary" className="desktop-add" icon={<Plus size={19}/>} onClick={openAdd}>{settings.addTransactionLabel}</Button>} />
     <section className="stat-grid has-savings">
       {compactCards.map((card, index) => <StatCard key={card.type} {...card} className={compactCards.length % 2 === 1 && index === compactCards.length - 1 ? 'mobile-wide' : ''}/>)}
       <StatCard label="مانده قابل خرج" value={Math.max(0, spendableAmount - expense)} type="balance" note={`${Math.max(0, Math.round(((spendableAmount - expense) / Math.max(spendableAmount, 1)) * 100))}٪ از مبلغ قابل‌هزینه باقی مانده`} />

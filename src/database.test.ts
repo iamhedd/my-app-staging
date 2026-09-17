@@ -62,6 +62,7 @@ describe('API persistence contracts', () => {
     expect(data.financialSetup?.categories[0].amount).toBe(2_250_000);
     expect(data.budgets).toEqual({ خوراک: 2_250_000 });
     expect(data.profile.avatarUrl).toBe('/google.png');
+    expect(data.profileNeedsSync).toBe(false);
   });
 
   it('rejects unsafe bigint values instead of silently rounding them', async () => {
@@ -76,5 +77,7 @@ describe('API persistence contracts', () => {
     expect(resolveProfileName('  نام ذخیره‌شده  ', { email: 'google@example.com', name: 'نام گوگل' })).toBe('نام ذخیره‌شده');
     expect(resolveProfileName('', { email: 'google@example.com', name: '  نام گوگل  ' })).toBe('نام گوگل');
     expect(resolveProfileName('', { email: 'person@example.com', name: '' })).toBe('person@example.com');
+    expect(resolveProfileName('کاربر گاو', { email: 'person@example.com', name: 'هدیه' })).toBe('هدیه');
+    expect(resolveProfileName('person', { email: 'person@example.com', name: 'هدیه' })).toBe('هدیه');
   });
 });

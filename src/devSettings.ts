@@ -39,3 +39,10 @@ export function normalizeDevSettings(value: Partial<DevSettings> | null | undefi
 export function interpolateDevText(template: string, values: Record<string, string>) {
   return Object.entries(values).reduce((text, [key, value]) => text.replaceAll(`{${key}}`, value), template);
 }
+
+export function dashboardGreetingText(template: string, name: string) {
+  const displayName = name.trim() || 'کاربر گاو';
+  return template.includes('{name}')
+    ? interpolateDevText(template, { name: displayName })
+    : interpolateDevText(defaultDevSettings.dashboardGreeting, { name: displayName });
+}

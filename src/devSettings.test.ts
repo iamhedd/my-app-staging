@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultDevSettings, normalizeDevSettings } from './devSettings';
+import { dashboardGreetingText, defaultDevSettings, normalizeDevSettings } from './devSettings';
 
 describe('normalizeDevSettings', () => {
   it('fills missing fields in settings saved by older versions', () => {
@@ -8,5 +8,12 @@ describe('normalizeDevSettings', () => {
       ...defaultDevSettings,
       appName: 'نسخه شخصی',
     });
+  });
+});
+
+describe('dashboardGreetingText', () => {
+  it('always greets the resolved user name even with an old literal template', () => {
+    expect(dashboardGreetingText('سلام {name}، خوش آمدی!', 'هدیه')).toBe('سلام هدیه، خوش آمدی!');
+    expect(dashboardGreetingText('سلام کاربر گاو، خوش آمدی!', 'هدیه')).toBe('سلام هدیه، خوش آمدی!');
   });
 });
