@@ -18,6 +18,11 @@ import {
 } from 'antd';
 import { getCurrentUser, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, type User } from './auth';
 import { enablePushNotifications, listenForForegroundNotifications, notificationPermission } from './firebaseMessaging';
+import { showBrowserNotification } from './browserNotifications';
+import {
+  budgetAlertText, collectBudgetAlerts, DEFAULT_NIGHTLY_REMINDER_TEXT,
+  shouldSendNightlyReminder, type BudgetAlertLedger,
+} from './notificationRules';
 import { categoryEmoji } from './categoryEmoji';
 import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
@@ -65,6 +70,8 @@ const initialBudgets: BudgetMap = {
 };
 const initialWeeklyBudgets: WeeklyBudgetStore = {};
 const profileStorageKey = (userKey: string) => `gav-profile-v1:${userKey}`;
+const budgetAlertLedgerKey = (userKey: string) => `gav-budget-alert-ledger-v1:${userKey}`;
+const nightlyReminderKey = (userKey: string) => `gav-nightly-reminder-last-v1:${userKey}`;
 
 const formatMoney = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
 const compactMoney = (value: number) => `${new Intl.NumberFormat('fa-IR', { notation: 'compact', maximumFractionDigits: 1 }).format(value)} تومان`;
@@ -160,6 +167,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [databaseRole, setDatabaseRole] = useState<'user' | 'admin'>('user');
   const hydratedUserRef = useRef('');
+  const notificationQueueRef = useRef<Promise<void>>(Promise.resolve());
   const activeFinancialSetup = normalizeFinancialSetup(financialSetup);
   const canAccessDevPanel = databaseRole === 'admin';
 
@@ -321,27 +329,56 @@ export default function App() {
     window.setTimeout(() => setToast(''), 2400);
   };
 
+  const queueBudgetAlerts = (nextTransactions: Transaction[], nextBudgets: BudgetMap, periodKeys: string[]) => {
+    if (!currentUser || !periodKeys.length) return;
+    notificationQueueRef.current = notificationQueueRef.current.then(async () => {
+      let ledger: BudgetAlertLedger = {};
+      try { ledger = JSON.parse(localStorage.getItem(budgetAlertLedgerKey(currentUser.id)) || '{}') as BudgetAlertLedger; }
+      catch { ledger = {}; }
+      const alerts = collectBudgetAlerts(nextTransactions, nextBudgets, periodKeys, ledger);
+      for (const alert of alerts) {
+        const delivered = await showBrowserNotification({
+          title: 'هشدار بودجه',
+          body: budgetAlertText(alert),
+          tag: `gav-budget-${alert.key}`,
+          url: '/',
+        });
+        if (delivered) {
+          ledger[alert.key] = alert.level;
+          localStorage.setItem(budgetAlertLedgerKey(currentUser.id), JSON.stringify(ledger));
+        }
+      }
+    }).catch(() => undefined);
+  };
+
   useEffect(() => {
     if (authStatus !== 'authenticated' || !activeFinancialSetup?.reminder.enabled || !('Notification' in window) || Notification.permission !== 'granted') return;
     let timeoutId: number;
     const schedule = () => {
       const delay = millisecondsUntilReminder(activeFinancialSetup.reminder.time);
       if (delay === null) return;
-      timeoutId = window.setTimeout(() => {
-        new Notification('گاو', { body: 'یادت نره مخارج امروزت رو ثبت کنی.', icon: '/gav-logo.png', dir: 'rtl', lang: 'fa' });
+      timeoutId = window.setTimeout(async () => {
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: activeFinancialSetup.reminder.timezone }).format(new Date());
+        const storageKey = nightlyReminderKey(currentUser?.id || activeUserKey);
+        if (shouldSendNightlyReminder(localStorage.getItem(storageKey), today)) {
+          const delivered = await showBrowserNotification({ title: 'یادآوری ثبت مخارج', body: DEFAULT_NIGHTLY_REMINDER_TEXT, tag: `gav-nightly-${today}`, url: '/' });
+          if (delivered) localStorage.setItem(storageKey, today);
+        }
         schedule();
       }, delay);
     };
     schedule();
     return () => window.clearTimeout(timeoutId);
-  }, [authStatus, activeFinancialSetup?.reminder.enabled, activeFinancialSetup?.reminder.time]);
+  }, [authStatus, activeFinancialSetup?.reminder.enabled, activeFinancialSetup?.reminder.time, activeFinancialSetup?.reminder.timezone, activeUserKey, currentUser?.id]);
 
   const addTransaction = async (transaction: Omit<Transaction, 'id'>) => {
     if (!currentUser) return;
     const next = { ...transaction, id: crypto.randomUUID() };
     try {
       if (currentUser) await saveCloudTransaction(currentUser.id, next);
-      setTransactions([next, ...transactions]);
+      const nextTransactions = [next, ...transactions];
+      setTransactions(nextTransactions);
+      if (next.type === 'expense') queueBudgetAlerts(nextTransactions, budgets, [next.date.slice(0, 7)]);
       setShowAdd(false);
       setNewTransactionDate(null);
       notify('تراکنش با موفقیت ثبت شد');
@@ -357,7 +394,12 @@ export default function App() {
     const next = { ...transaction, id: editingTransaction.id };
     try {
       if (currentUser) await saveCloudTransaction(currentUser.id, next);
-      setTransactions(transactions.map(item => item.id === editingTransaction.id ? next : item));
+      const nextTransactions = transactions.map(item => item.id === editingTransaction.id ? next : item);
+      setTransactions(nextTransactions);
+      const affectedPeriods = [editingTransaction, next]
+        .filter(item => item.type === 'expense')
+        .map(item => item.date.slice(0, 7));
+      queueBudgetAlerts(nextTransactions, budgets, affectedPeriods);
       setEditingTransaction(null);
       notify('تراکنش با موفقیت ویرایش شد');
     } catch (error) {
@@ -432,6 +474,7 @@ export default function App() {
       () => currentUser ? saveCloudBudgets(currentUser.id, next, weeklyBudgets) : Promise.resolve(),
       () => setBudgets(next),
     );
+    queueBudgetAlerts(transactions, next, [jalaliDateKey(selectedMonth.year, selectedMonth.month, 1).slice(0, 7)]);
   };
   const updateProfile = async (next: UserProfile) => {
     await persistThenCommit(
