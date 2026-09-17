@@ -4,7 +4,7 @@ import {
   CircleDollarSign, CreditCard, LayoutDashboard, MoreHorizontal, Pencil,
   Plus, ReceiptText, Search, Settings, SlidersHorizontal, Target, Trash2,
   Utensils, CarFront, House, ShoppingBag, HeartPulse, Gamepad2, WalletCards,
-  X, LogOut, Tags, Moon, ShieldCheck, UserRound,
+  X, LogOut, Tags, Moon, ShieldCheck, UserRound, Info,
   LockKeyhole, Mail, Sparkles, CalendarDays, Repeat2,
   ChevronLeft, ChevronRight, Wrench, Loader2, RefreshCw,
 } from 'lucide-react';
@@ -14,7 +14,7 @@ import {
 } from 'recharts';
 import {
   Alert, Avatar, Button, Card, Checkbox, ConfigProvider, Empty, Form, Input, InputNumber,
-  List, Modal, Result, Segmented, Select, Spin, Switch, Tabs,
+  List, Modal, Result, Segmented, Select, Spin, Switch, Tabs, Tooltip as AntTooltip,
 } from 'antd';
 import { getCurrentUser, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, type User } from './auth';
 import { enablePushNotifications, listenForForegroundNotifications, notificationPermission } from './firebaseMessaging';
@@ -627,8 +627,12 @@ function AuthScreen({ onAuthenticated, onGoogleLogin, settings }: { onAuthentica
   </main>;
 }
 
-function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description: string; action?: React.ReactNode }) {
-  return <div className="page-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1><p>{description}</p></div>{action}</div>;
+function InfoHint({ text, label = 'اطلاعات بیشتر' }: { text: string; label?: string }) {
+  return <AntTooltip title={text} trigger="click" placement="bottom"><button type="button" className="info-hint" aria-label={label}><Info size={16}/></button></AntTooltip>;
+}
+
+function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string; title: string; description?: string; action?: React.ReactNode }) {
+  return <div className="page-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</div>;
 }
 
 function Dashboard({ settings, profile, month, plan, categoryOptions, transactions, income, expense, savings, setPage, openAdd }: { settings: DevSettings; profile: UserProfile; month: JalaliMonth; plan: FinancialSetup; categoryOptions: Category[]; transactions: Transaction[]; income: number; expense: number; savings: number; setPage: (p: Page) => void; openAdd: () => void }) {
@@ -789,7 +793,7 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
     } catch (error) { setBudgetError(error instanceof Error ? error.message : 'ذخیره بودجه انجام نشد. دوباره تلاش کن.'); }
     finally { setSavingBudget(false); }
   };
-  return <><PageHeader title="بودجه‌بندی" description="برای هر دسته سقف تعیین کن و کنترل هزینه‌ها را در دست بگیر." />
+  return <><PageHeader title="بودجه‌بندی" action={<InfoHint text="برای هر دسته سقف تعیین کن و کنترل هزینه‌ها رو در دست بگیر." label="راهنمای بودجه‌بندی"/>} />
     <div className="budget-hero">
       <div className="budget-hero-copy"><span>خلاصه {month.label}</span><strong>{month.label}</strong></div>
       <div className="budget-summary-values">
@@ -800,13 +804,13 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
       <div className="budget-ring" style={{'--progress':`${Math.min(100,totalProgress)*3.6}deg`} as React.CSSProperties}><div><strong>{totalProgress}٪</strong><span>مصرف ماه</span></div></div>
     </div>
     <section className="month-week-plan">
-      <div className="month-week-plan-head"><div><h2>سقف مجاز هفته‌های ماه</h2><p>بودجه ماهانه بر اساس تعداد روزهای هر هفته تقسیم شده است؛ جمع هفته‌ها دقیقاً با بودجه ماه برابر می‌ماند.</p></div><span>{toPersianDigits(monthWeeks.length)} هفته</span></div>
+      <div className="month-week-plan-head"><div className="info-title-row"><h2>سقف مجاز هفته‌های ماه</h2><InfoHint text="بودجه ماهانه بر اساس تعداد روزهای هر هفته تقسیم می‌شه؛ جمع هفته‌ها دقیقاً با بودجه ماه برابره." label="نحوه محاسبه سقف هفتگی"/></div><span>{toPersianDigits(monthWeeks.length)} هفته</span></div>
       <div className="month-week-grid" role="tablist" aria-label={`هفته‌های ${month.label}`}>{monthWeeks.map(week => {
         return <button type="button" role="tab" aria-selected={week.index === activeWeekIndex} className={week.index === activeWeekIndex ? 'active' : ''} key={week.key} onClick={() => setSelectedWeekIndex(week.index)}><span>هفته {toPersianDigits(week.index + 1)}{week.isCurrent ? <em>جاری</em> : null}</span><strong>{toPersianDigits(week.startDay)}–{toPersianDigits(week.endDay)}</strong></button>;
       })}</div>
       <div className="selected-week-summary"><div className="selected-week-label"><span>هفته {toPersianDigits(activeWeekIndex + 1)}</span><strong>{selectedWeek.label}</strong></div><div className="selected-week-numbers"><span>سقف <strong>{budgetCardMoney(selectedWeekLimit)}</strong></span><span>خرج <strong>{budgetCardMoney(selectedWeekSpent)}</strong></span><span>مانده <strong className={selectedWeekRemaining < 0 ? 'over' : ''}>{selectedWeekRemaining < 0 ? `−${budgetCardMoney(Math.abs(selectedWeekRemaining))}` : budgetCardMoney(selectedWeekRemaining)}</strong></span></div></div>
     </section>
-    <div className="budget-category-heading"><div><h2>سقف دسته‌ها در هفته {toPersianDigits(activeWeekIndex + 1)}</h2><p>برای تغییر این سقف‌ها، بودجه ماهانه همان دسته را ویرایش کن.</p></div></div>
+    <div className="budget-category-heading"><div className="info-title-row"><h2>سقف دسته‌ها در هفته {toPersianDigits(activeWeekIndex + 1)}</h2><InfoHint text="برای تغییر سقف هفتگی، بودجه ماهانه همون دسته رو ویرایش کن." label="راهنمای سقف دسته‌ها"/></div></div>
     <div className="budget-list">{budgetEntries.map(([name, monthlyLimit]) => {
       const weeklyLimit = weekLimitFor(name);
       const spent = weeklyExpenseFor(name);

@@ -588,8 +588,8 @@ body{color:var(--ink)}
 /* Budget category cards — clean two-row composition from the supplied reference */
 .budget-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 .budget-item{
-  aspect-ratio:auto;min-height:196px;padding:28px 30px 24px;display:grid;
-  grid-template-rows:auto auto 10px;gap:22px;border:1px solid var(--border);border-radius:24px;
+  aspect-ratio:auto;min-height:160px;padding:20px 22px 18px;display:grid;
+  grid-template-rows:auto auto 8px;gap:14px;border:1px solid var(--border);border-radius:20px;
   background:#fff;box-shadow:none;overflow:hidden;
 }
 .budget-item-head{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:14px;min-width:0}
@@ -611,10 +611,12 @@ body{color:var(--ink)}
 .budget-item .budget-progress i{height:100%;border-radius:999px;background:var(--brand-accent)!important}
 .budget-item.over .budget-progress i{background:#C63B3E!important}
 .budget-item.near .budget-progress i{background:var(--brand-accent-dark)!important}
+.info-title-row{display:flex;align-items:center;gap:7px;min-width:0}.info-title-row h2{min-width:0}
+.info-hint{width:28px;height:28px;min-width:28px;padding:0;border:1px solid var(--border);border-radius:50%;background:#fff;color:var(--muted);display:inline-grid;place-items:center;cursor:help;line-height:1}.info-hint:hover,.info-hint:focus-visible{border-color:var(--brand-accent);color:var(--brand-accent-dark);outline:none;background:var(--brand-tint)}
 
 @media(max-width:850px){
   .budget-list{grid-template-columns:minmax(0,1fr);gap:12px}
-  .budget-item{min-height:144px;padding:18px 20px;gap:15px;border-radius:18px}
+  .budget-item{min-height:122px;padding:14px 16px;gap:9px;border-radius:16px}
   .budget-item-head{grid-template-columns:42px minmax(0,1fr) auto;gap:10px}
   .budget-item-head .category-icon.emoji-icon{width:42px;height:42px;border-radius:12px;font-size:21px}
   .budget-card-copy>strong{font-size:15px}
@@ -815,7 +817,7 @@ body{color:var(--ink)}
   .page-budgets .month-week-plan-head{align-items:center;margin-bottom:8px}
   .page-budgets .month-week-plan-head h2{margin:0;font-size:12px}
   .page-budgets .month-week-plan-head p{display:none}
-  .page-budgets .month-week-grid{grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;margin-bottom:7px}
+  .page-budgets .month-week-grid{grid-template-columns:repeat(auto-fit,minmax(46px,1fr));gap:4px;margin-bottom:7px}
   .page-budgets .month-week-grid>button{height:38px;min-height:38px;padding:4px;border-radius:8px}
   .page-budgets .month-week-grid>button span{font-size:8px}
   .page-budgets .month-week-grid>button strong{display:none}
