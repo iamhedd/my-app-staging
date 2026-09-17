@@ -859,3 +859,11 @@ body{color:var(--ink)}
   .page-dashboard .page-header .eyebrow{display:inline-flex;font-size:12px}
   .page-dashboard .page-header h1{font-size:23px;line-height:1.45;letter-spacing:-.5px}
 }
+
+/* Reports copy from the approved reference, visible on both layouts */
+.reports-page>.page-header p{display:block}
+@media(max-width:650px){
+  .page-reports .content>.reports-page>.page-header{display:block;margin:0 2px 18px}
+  .reports-page>.page-header h1{display:none}
+  .reports-page>.page-header p{display:block;max-width:none;font-size:13px;line-height:1.9}
+}
