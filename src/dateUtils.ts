@@ -4,6 +4,15 @@ export const jalaliMonthNames = ['فروردین', 'اردیبهشت', 'خردا
 const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
 
 export type JalaliMonth = { year: number; month: number; key: string; label: string; length: number };
+export type JalaliMonthWeek = {
+  index: number;
+  key: string;
+  startDay: number;
+  endDay: number;
+  days: number;
+  label: string;
+  isCurrent: boolean;
+};
 
 export function toEnglishDigits(value: string) {
   return value.replace(/[۰-۹]/g, digit => String(persianDigits.indexOf(digit))).replace(/[٬,]/g, '');
@@ -74,6 +83,50 @@ export function monthFromOffset(offset = 0, now = new Date()) {
 
 export function recentJalaliMonths(selected: JalaliMonth, count = 6) {
   return Array.from({ length: count }, (_, index) => shiftJalaliMonth(selected.year, selected.month, index - count + 1));
+}
+
+export function weeksOfJalaliMonth(month: JalaliMonth, now = new Date()): JalaliMonthWeek[] {
+  const firstDate = jalaliToDate(jalaliDateKey(month.year, month.month, 1));
+  if (!firstDate) return [];
+  const today = todayJalali(now);
+  const weeks: JalaliMonthWeek[] = [];
+  let startDay = 1;
+  let daysUntilFriday = 7 - ((firstDate.getDay() + 1) % 7);
+
+  while (startDay <= month.length) {
+    const days = Math.min(daysUntilFriday, month.length - startDay + 1);
+    const endDay = startDay + days - 1;
+    const segmentDate = jalaliToDate(jalaliDateKey(month.year, month.month, startDay))!;
+    const saturday = new Date(segmentDate);
+    saturday.setDate(segmentDate.getDate() - ((segmentDate.getDay() + 1) % 7));
+    const key = `${saturday.getFullYear()}-${String(saturday.getMonth() + 1).padStart(2, '0')}-${String(saturday.getDate()).padStart(2, '0')}`;
+    weeks.push({
+      index: weeks.length,
+      key,
+      startDay,
+      endDay,
+      days,
+      label: `${toPersianDigits(startDay)} تا ${toPersianDigits(endDay)} ${jalaliMonthNames[month.month - 1]}`,
+      isCurrent: today.year === month.year && today.month === month.month && today.day >= startDay && today.day <= endDay,
+    });
+    startDay = endDay + 1;
+    daysUntilFriday = 7;
+  }
+  return weeks;
+}
+
+export function allocateMonthlyAmountByWeek(amount: number, weeks: JalaliMonthWeek[]) {
+  const safeAmount = Math.max(0, Math.round(amount));
+  const totalDays = weeks.reduce((sum, week) => sum + week.days, 0);
+  let cumulativeDays = 0;
+  let allocated = 0;
+  return weeks.map((week, index) => {
+    cumulativeDays += week.days;
+    const cumulativeAmount = index === weeks.length - 1 ? safeAmount : Math.round(safeAmount * cumulativeDays / Math.max(totalDays, 1));
+    const weeklyAmount = cumulativeAmount - allocated;
+    allocated = cumulativeAmount;
+    return weeklyAmount;
+  });
 }
 
 export function isInJalaliMonth(date: string, month: JalaliMonth) {

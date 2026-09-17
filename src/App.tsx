@@ -19,12 +19,12 @@ import {
 import { getCurrentUser, signInWithEmail, signInWithGoogle, signOut, signUpWithEmail, type User } from './auth';
 import { enablePushNotifications, listenForForegroundNotifications, notificationPermission } from './firebaseMessaging';
 import { categoryEmoji } from './categoryEmoji';
-import { jalaaliMonthLength, toJalaali } from 'jalaali-js';
+import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
 import {
-  displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
-  monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, type JalaliMonth,
+  allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
+  monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
 } from './dateUtils';
 import { materializeRecurringTransactions, normalizeTransactions, type Recurrence, type Transaction, type TxType } from './transactions';
 import {
@@ -73,24 +73,6 @@ const budgetCardMoney = (value: number) => {
   if (value >= 1_000) return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 0 }).format(value / 1_000)}هزار`;
   return new Intl.NumberFormat('fa-IR').format(value);
 };
-function transactionDate(value: string) {
-  return jalaliToDate(value);
-}
-
-function weekRange(offset = 0) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const distanceFromSaturday = (today.getDay() + 1) % 7;
-  const start = new Date(today);
-  start.setDate(today.getDate() - distanceFromSaturday + offset * 7);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  const key = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-  const formatter = new Intl.DateTimeFormat('fa-IR-u-ca-persian', { day: 'numeric', month: 'long' });
-  return { start, end, key, label: `${formatter.format(start)} تا ${formatter.format(end)}` };
-}
-
 function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
     try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; }
@@ -451,12 +433,6 @@ export default function App() {
       () => setBudgets(next),
     );
   };
-  const updateWeeklyBudgetMap = async (next: WeeklyBudgetStore) => {
-    await persistThenCommit(
-      () => currentUser ? saveCloudBudgets(currentUser.id, budgets, next) : Promise.resolve(),
-      () => setWeeklyBudgets(next),
-    );
-  };
   const updateProfile = async (next: UserProfile) => {
     await persistThenCommit(
       () => currentUser ? saveCloudProfile(currentUser.id, next) : Promise.resolve(),
@@ -491,7 +467,7 @@ export default function App() {
           {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={totalSavings} setPage={setPage} openAdd={() => openNewTransaction()} />}
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
-          {page === 'budgets' && <Budgets month={selectedMonth} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} weeklyBudgets={weeklyBudgets} setWeeklyBudgets={updateWeeklyBudgetMap} notify={notify} />}
+          {page === 'budgets' && <Budgets month={selectedMonth} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
           {page === 'settings' && <SettingsPage userId={currentUser.id} cloudEnabled financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
           {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={async () => {
             try {
@@ -717,73 +693,70 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
   </div>;
 }
 
-function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, weeklyBudgets, setWeeklyBudgets, notify }: { month: JalaliMonth; categoryOptions: Category[]; transactions: Transaction[]; budgets: BudgetMap; setBudgets: (b: BudgetMap) => void | Promise<void>; weeklyBudgets: WeeklyBudgetStore; setWeeklyBudgets: (b: WeeklyBudgetStore) => void | Promise<void>; notify: (s: string) => void }) {
-  const [period, setPeriod] = useState<'monthly' | 'weekly'>('monthly');
-  const [weekOffset, setWeekOffset] = useState(0);
+function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, notify }: { month: JalaliMonth; categoryOptions: Category[]; transactions: Transaction[]; budgets: BudgetMap; setBudgets: (b: BudgetMap) => void | Promise<void>; notify: (s: string) => void }) {
+  const monthWeeks = weeksOfJalaliMonth(month);
+  const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => Math.max(0, monthWeeks.findIndex(week => week.isCurrent)));
   const [editing, setEditing] = useState<string | null>(null);
   const [amount, setAmount] = useState('');
   const [savingBudget, setSavingBudget] = useState(false);
   const [budgetError, setBudgetError] = useState('');
-  const selectedWeek = weekRange(weekOffset);
-  const selectedWeekJalaali = toJalaali(selectedWeek.start.getFullYear(), selectedWeek.start.getMonth() + 1, selectedWeek.start.getDate());
-  const selectedMonthLength = jalaaliMonthLength(selectedWeekJalaali.jy, selectedWeekJalaali.jm);
-  const suggestedWeeklyBudgets = Object.fromEntries(categoryOptions.map(category => [category.name, Math.round((budgets[category.name] || 0) * 7 / selectedMonthLength)]));
-  const weeklyOverrides = weeklyBudgets[selectedWeek.key] || {};
-  const activeBudgets = period === 'monthly' ? budgets : { ...suggestedWeeklyBudgets, ...weeklyOverrides };
-  const expenseFor = (name: string) => transactions.filter(t => {
-    if (t.type !== 'expense' || t.category !== name) return false;
-    if (period === 'monthly') return isInJalaliMonth(t.date, month);
-    const date = transactionDate(t.date);
-    return Boolean(date && date >= selectedWeek.start && date <= selectedWeek.end);
-  }).reduce((s,t) => s+t.amount, 0);
-  const totalBudget = Object.values(activeBudgets).reduce((s,v)=>s+v,0);
-  const totalSpent = Object.keys(activeBudgets).reduce((s,c)=>s+expenseFor(c),0);
+  useEffect(() => {
+    const currentWeek = monthWeeks.findIndex(week => week.isCurrent);
+    setSelectedWeekIndex(currentWeek >= 0 ? currentWeek : 0);
+  }, [month.key]);
+
+  const activeWeekIndex = Math.min(selectedWeekIndex, Math.max(0, monthWeeks.length - 1));
+  const selectedWeek = monthWeeks[activeWeekIndex]!;
+  const budgetEntries = categoryOptions.map(category => [category.name, budgets[category.name] || 0] as const);
+  const weekLimitFor = (name: string, index = activeWeekIndex) => allocateMonthlyAmountByWeek(budgets[name] || 0, monthWeeks)[index] || 0;
+  const monthlyExpenseFor = (name: string) => transactions.filter(transaction => transaction.type === 'expense' && transaction.category === name && isInJalaliMonth(transaction.date, month)).reduce((sum, transaction) => sum + transaction.amount, 0);
+  const weeklyExpenseFor = (name: string, week = selectedWeek) => transactions.filter(transaction => {
+    if (transaction.type !== 'expense' || transaction.category !== name) return false;
+    const parsed = parseJalaliDate(transaction.date);
+    return Boolean(parsed && parsed.year === month.year && parsed.month === month.month && parsed.day >= week.startDay && parsed.day <= week.endDay);
+  }).reduce((sum, transaction) => sum + transaction.amount, 0);
+  const totalBudget = budgetEntries.reduce((sum, [, limit]) => sum + limit, 0);
+  const totalSpent = budgetEntries.reduce((sum, [name]) => sum + monthlyExpenseFor(name), 0);
   const totalRemaining = totalBudget - totalSpent;
   const totalProgress = totalBudget > 0 ? Math.round(totalSpent / totalBudget * 100) : 0;
+  const selectedWeekLimit = budgetEntries.reduce((sum, [name]) => sum + weekLimitFor(name), 0);
+  const selectedWeekSpent = budgetEntries.reduce((sum, [name]) => sum + weeklyExpenseFor(name), 0);
+  const selectedWeekRemaining = selectedWeekLimit - selectedWeekSpent;
   const save = async () => {
     if (!editing || amount === '' || Number(amount) < 0) return;
     setSavingBudget(true);
     setBudgetError('');
     try {
-      if (period === 'monthly') await setBudgets({ ...budgets, [editing]: Number(amount) });
-      else await setWeeklyBudgets({ ...weeklyBudgets, [selectedWeek.key]: { ...weeklyOverrides, [editing]: Number(amount) } });
+      await setBudgets({ ...budgets, [editing]: Number(amount) });
       setEditing(null);
-      notify(`لیمیت ${period === 'weekly' ? 'هفتگی' : 'ماهانه'} به‌روزرسانی شد`);
+      notify('بودجه ماهانه و سقف‌های هفتگی به‌روزرسانی شدند');
     } catch (error) { setBudgetError(error instanceof Error ? error.message : 'ذخیره بودجه انجام نشد. دوباره تلاش کن.'); }
-    finally { setSavingBudget(false); }
-  };
-  const resetWeeklyOverride = async (name: string) => {
-    const nextOverrides = { ...weeklyOverrides };
-    delete nextOverrides[name];
-    const nextStore = { ...weeklyBudgets };
-    if (Object.keys(nextOverrides).length) nextStore[selectedWeek.key] = nextOverrides;
-    else delete nextStore[selectedWeek.key];
-    setSavingBudget(true);
-    setBudgetError('');
-    try {
-      await setWeeklyBudgets(nextStore);
-      setEditing(null);
-      notify('لیمیت هفتگی به پیشنهاد ماهانه بازگشت');
-    } catch (error) { setBudgetError(error instanceof Error ? error.message : 'بازنشانی بودجه انجام نشد. دوباره تلاش کن.'); }
     finally { setSavingBudget(false); }
   };
   return <><PageHeader title="بودجه‌بندی" description="برای هر دسته سقف تعیین کن و کنترل هزینه‌ها را در دست بگیر." />
     <div className="budget-hero">
-      <div className="budget-hero-copy"><span>{period === 'weekly' ? 'خلاصه هفته انتخاب‌شده' : `خلاصه ${month.label}`}</span><strong>{period === 'weekly' ? selectedWeek.label : month.label}</strong></div>
+      <div className="budget-hero-copy"><span>خلاصه {month.label}</span><strong>{month.label}</strong></div>
       <div className="budget-summary-values">
-        <div><span>{period === 'weekly' ? 'سقف هفته' : 'بودجه ماه'}</span><strong>{formatMoney(totalBudget)}</strong></div>
+        <div><span>بودجه ماه</span><strong>{formatMoney(totalBudget)}</strong></div>
         <div><span>مصرف</span><strong>{formatMoney(totalSpent)}</strong></div>
         <div><span>مانده</span><strong className={totalRemaining < 0 ? 'over' : ''}>{totalRemaining < 0 ? `− ${formatMoney(Math.abs(totalRemaining))}` : formatMoney(totalRemaining)}</strong></div>
       </div>
-      <div className="budget-ring" style={{'--progress':`${Math.min(100,totalProgress)*3.6}deg`} as React.CSSProperties}><div><strong>{totalProgress}٪</strong><span>{period === 'weekly' ? 'مصرف هفته' : 'مصرف ماه'}</span></div></div>
+      <div className="budget-ring" style={{'--progress':`${Math.min(100,totalProgress)*3.6}deg`} as React.CSSProperties}><div><strong>{totalProgress}٪</strong><span>مصرف ماه</span></div></div>
     </div>
-    <div className="budget-period-controls">
-      <Segmented block value={period} onChange={value => setPeriod(value as 'monthly' | 'weekly')} options={[{value:'monthly',label:'ماهانه'},{value:'weekly',label:'هفتگی'}]} aria-label="دوره بودجه"/>
-      {period === 'weekly' && <div className="week-picker"><Button aria-label="هفته قبل" onClick={() => setWeekOffset(value => value - 1)}>›</Button><div><strong>{weekOffset === 0 ? 'هفته جاری' : weekOffset < 0 ? `${Math.abs(weekOffset)} هفته قبل` : `${weekOffset} هفته بعد`}</strong><span>{selectedWeek.label}</span></div><Button aria-label="هفته بعد" onClick={() => setWeekOffset(value => value + 1)}>‹</Button></div>}
-    </div>
-    <div className="budget-list">{Object.entries(activeBudgets).map(([name, limit]) => {
-      const spent = expenseFor(name);
-      const pct = limit > 0 ? Math.round(spent / limit * 100) : 0;
+    <section className="month-week-plan">
+      <div className="month-week-plan-head"><div><h2>سقف مجاز هفته‌های ماه</h2><p>بودجه ماهانه بر اساس تعداد روزهای هر هفته تقسیم شده است؛ جمع هفته‌ها دقیقاً با بودجه ماه برابر می‌ماند.</p></div><span>{toPersianDigits(monthWeeks.length)} هفته</span></div>
+      <div className="month-week-grid" role="tablist" aria-label={`هفته‌های ${month.label}`}>{monthWeeks.map(week => {
+        const weekLimit = budgetEntries.reduce((sum, [name]) => sum + weekLimitFor(name, week.index), 0);
+        const weekSpent = budgetEntries.reduce((sum, [name]) => sum + weeklyExpenseFor(name, week), 0);
+        return <button type="button" role="tab" aria-selected={week.index === activeWeekIndex} className={week.index === activeWeekIndex ? 'active' : ''} key={week.key} onClick={() => setSelectedWeekIndex(week.index)}><span>هفته {toPersianDigits(week.index + 1)}{week.isCurrent ? <em>جاری</em> : null}</span><strong>{week.label}</strong><small>{budgetCardMoney(weekSpent)} از {budgetCardMoney(weekLimit)}</small></button>;
+      })}</div>
+      <div className="selected-week-summary"><div><span>هفته انتخاب‌شده</span><strong>{selectedWeek.label}</strong><small>{toPersianDigits(selectedWeek.days)} روز از {month.label}</small></div><div><span>سقف مجاز</span><strong>{formatMoney(selectedWeekLimit)}</strong></div><div><span>مصرف هفته</span><strong>{formatMoney(selectedWeekSpent)}</strong></div><div><span>مانده هفته</span><strong className={selectedWeekRemaining < 0 ? 'over' : ''}>{selectedWeekRemaining < 0 ? `− ${formatMoney(Math.abs(selectedWeekRemaining))}` : formatMoney(selectedWeekRemaining)}</strong></div></div>
+    </section>
+    <div className="budget-category-heading"><div><h2>سقف دسته‌ها در هفته {toPersianDigits(activeWeekIndex + 1)}</h2><p>برای تغییر این سقف‌ها، بودجه ماهانه همان دسته را ویرایش کن.</p></div></div>
+    <div className="budget-list">{budgetEntries.map(([name, monthlyLimit]) => {
+      const weeklyLimit = weekLimitFor(name);
+      const spent = weeklyExpenseFor(name);
+      const pct = weeklyLimit > 0 ? Math.round(spent / weeklyLimit * 100) : 0;
       const status = pct >= 100 ? 'over' : pct >= 80 ? 'near' : '';
       const cat = categoryOptions.find(category => category.name === name) || { name, color: '#707070', icon: 'other' };
       return <div className={`panel budget-item ${status}`} key={name}>
@@ -793,15 +766,15 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, we
             <strong title={name}>{name}</strong>
             {status && <small className={`limit-alert ${status}`}>{status === 'over' ? 'عبور از سقف' : 'نزدیک سقف'}</small>}
           </div>
-          <button className="icon-button budget-edit-button" aria-label={`ویرایش لیمیت ${name}`} onClick={() => { setBudgetError(''); setEditing(name); setAmount(limit ? String(limit) : ''); }}><Pencil size={16}/></button>
+          <button className="icon-button budget-edit-button" aria-label={`ویرایش بودجه ماهانه ${name}`} onClick={() => { setBudgetError(''); setEditing(name); setAmount(monthlyLimit ? String(monthlyLimit) : ''); }}><Pencil size={16}/></button>
         </div>
-        <div className="budget-card-amount" title={limit > 0 ? `${formatMoney(spent)} از ${formatMoney(limit)}` : undefined}><span>{period === 'weekly' ? 'مصرف / سقف هفته' : 'مصرف / بودجه ماه'}</span><strong>{limit > 0 ? `${budgetCardMoney(spent)} / ${budgetCardMoney(limit)}` : 'بدون سقف'}</strong></div>
+        <div className="budget-week-metrics"><div><span>بودجه ماه</span><strong>{monthlyLimit > 0 ? budgetCardMoney(monthlyLimit) : 'بدون سقف'}</strong></div><div><span>سقف این هفته</span><strong>{weeklyLimit > 0 ? budgetCardMoney(weeklyLimit) : '—'}</strong></div><div><span>مصرف هفته</span><strong>{budgetCardMoney(spent)}</strong></div></div>
         <div className="budget-progress" aria-label={`${pct} درصد مصرف شده`}><i style={{ width: `${Math.min(100, pct)}%` }}/></div>
       </div>;
     })}</div>
-    <Modal open={Boolean(editing)} title={`لیمیت ${period === 'weekly' ? 'هفتگی' : 'ماهانه'} ${editing || ''}`} onCancel={() => !savingBudget && setEditing(null)} footer={null} destroyOnHidden>
-      {period === 'weekly' && <p className="ant-modal-description">{selectedWeek.label}</p>}
-      <Form layout="vertical" onFinish={save} requiredMark={false}><Form.Item label={`سقف ${period === 'weekly' ? 'هفتگی' : 'ماهانه'} (تومان)`}><InputNumber autoFocus className="ant-money-input" min={0} precision={0} value={amount === '' ? null : Number(amount)} disabled={savingBudget} onChange={value => setAmount(value === null ? '' : String(value))}/></Form.Item>{budgetError && <Alert type="error" showIcon message={budgetError}/>}<div className="ant-modal-actions"><Button disabled={savingBudget} onClick={() => setEditing(null)}>انصراف</Button>{period === 'weekly' && editing && Object.prototype.hasOwnProperty.call(weeklyOverrides, editing) && <Button disabled={savingBudget} onClick={() => resetWeeklyOverride(editing)}>بازگشت به پیشنهاد</Button>}<Button type="primary" htmlType="submit" loading={savingBudget}>{budgetError ? 'تلاش دوباره' : 'ذخیره تغییرات'}</Button></div></Form>
+    <Modal open={Boolean(editing)} title={`بودجه ماهانه ${editing || ''}`} onCancel={() => !savingBudget && setEditing(null)} footer={null} destroyOnHidden>
+      <p className="ant-modal-description">با تغییر بودجه ماهانه، سقف تمام هفته‌های {month.label} خودکار محاسبه می‌شود.</p>
+      <Form layout="vertical" onFinish={save} requiredMark={false}><Form.Item label="بودجه ماهانه (تومان)"><InputNumber autoFocus className="ant-money-input" min={0} precision={0} value={amount === '' ? null : Number(amount)} disabled={savingBudget} onChange={value => setAmount(value === null ? '' : String(value))}/></Form.Item>{budgetError && <Alert type="error" showIcon message={budgetError}/>}<div className="ant-modal-actions"><Button disabled={savingBudget} onClick={() => setEditing(null)}>انصراف</Button><Button type="primary" htmlType="submit" loading={savingBudget}>{budgetError ? 'تلاش دوباره' : 'ذخیره تغییرات'}</Button></div></Form>
     </Modal>
   </>;
 }

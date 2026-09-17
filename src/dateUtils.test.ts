@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, monthFromOffset, parseJalaliDate, shiftJalaliMonth, todayJalali } from './dateUtils';
+import { allocateMonthlyAmountByWeek, displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, monthFromOffset, parseJalaliDate, shiftJalaliMonth, todayJalali, weeksOfJalaliMonth } from './dateUtils';
 import { materializeRecurringTransactions, normalizeTransactions, type Transaction } from './transactions';
 
 describe('jalali date utilities', () => {
@@ -17,6 +17,25 @@ describe('jalali date utilities', () => {
     expect(monthFromOffset(0, now).label).toBe('شهریور ۱۴۰۵');
     expect(isInJalaliMonth('۱۴۰۵/۰۶/۲۳', monthFromOffset(0, now))).toBe(true);
     expect(elapsedDaysInMonth(monthFromOffset(0, now), now)).toBe(23);
+  });
+
+  it('splits a Jalali month into Saturday-to-Friday segments', () => {
+    const month = monthFromOffset(0, now);
+    const weeks = weeksOfJalaliMonth(month, now);
+    expect(weeks.reduce((sum, week) => sum + week.days, 0)).toBe(month.length);
+    expect(weeks.every(week => week.days > 0 && week.days <= 7)).toBe(true);
+    expect(weeks.filter(week => week.isCurrent)).toHaveLength(1);
+  });
+
+  it('distributes monthly limits without losing or duplicating money', () => {
+    const month = monthFromOffset(0, now);
+    const weeks = weeksOfJalaliMonth(month, now);
+    const allocation = allocateMonthlyAmountByWeek(10_000_003, weeks);
+    expect(allocation).toHaveLength(weeks.length);
+    expect(allocation.reduce((sum, amount) => sum + amount, 0)).toBe(10_000_003);
+    allocation.forEach((amount, index) => {
+      expect(amount).toBeCloseTo(10_000_003 * weeks[index].days / month.length, -1);
+    });
   });
 });
 
