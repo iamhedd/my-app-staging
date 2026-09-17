@@ -847,3 +847,15 @@ body{color:var(--ink)}
   .page-budgets .month-week-plan{padding-inline:9px}
   .page-budgets .budget-week-line strong{font-size:10px}
 }
+
+/* Dashboard welcome only — intentionally larger than the rest of the UI */
+.page-dashboard .page-header .eyebrow{
+  display:inline-flex;font-size:15px;font-weight:800;line-height:1.6;color:var(--brand-accent-dark)
+}
+.page-dashboard .page-header h1{
+  margin-top:4px;font-size:clamp(30px,3vw,40px);line-height:1.35;letter-spacing:-1.2px
+}
+@media(max-width:650px){
+  .page-dashboard .page-header .eyebrow{display:inline-flex;font-size:13px}
+  .page-dashboard .page-header h1{font-size:26px;line-height:1.45;letter-spacing:-.7px}
+}
