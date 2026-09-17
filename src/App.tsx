@@ -746,11 +746,9 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
     <section className="month-week-plan">
       <div className="month-week-plan-head"><div><h2>سقف مجاز هفته‌های ماه</h2><p>بودجه ماهانه بر اساس تعداد روزهای هر هفته تقسیم شده است؛ جمع هفته‌ها دقیقاً با بودجه ماه برابر می‌ماند.</p></div><span>{toPersianDigits(monthWeeks.length)} هفته</span></div>
       <div className="month-week-grid" role="tablist" aria-label={`هفته‌های ${month.label}`}>{monthWeeks.map(week => {
-        const weekLimit = budgetEntries.reduce((sum, [name]) => sum + weekLimitFor(name, week.index), 0);
-        const weekSpent = budgetEntries.reduce((sum, [name]) => sum + weeklyExpenseFor(name, week), 0);
-        return <button type="button" role="tab" aria-selected={week.index === activeWeekIndex} className={week.index === activeWeekIndex ? 'active' : ''} key={week.key} onClick={() => setSelectedWeekIndex(week.index)}><span>هفته {toPersianDigits(week.index + 1)}{week.isCurrent ? <em>جاری</em> : null}</span><strong>{week.label}</strong><small>{budgetCardMoney(weekSpent)} از {budgetCardMoney(weekLimit)}</small></button>;
+        return <button type="button" role="tab" aria-selected={week.index === activeWeekIndex} className={week.index === activeWeekIndex ? 'active' : ''} key={week.key} onClick={() => setSelectedWeekIndex(week.index)}><span>هفته {toPersianDigits(week.index + 1)}{week.isCurrent ? <em>جاری</em> : null}</span><strong>{toPersianDigits(week.startDay)}–{toPersianDigits(week.endDay)}</strong></button>;
       })}</div>
-      <div className="selected-week-summary"><div><span>هفته انتخاب‌شده</span><strong>{selectedWeek.label}</strong><small>{toPersianDigits(selectedWeek.days)} روز از {month.label}</small></div><div><span>سقف مجاز</span><strong>{formatMoney(selectedWeekLimit)}</strong></div><div><span>مصرف هفته</span><strong>{formatMoney(selectedWeekSpent)}</strong></div><div><span>مانده هفته</span><strong className={selectedWeekRemaining < 0 ? 'over' : ''}>{selectedWeekRemaining < 0 ? `− ${formatMoney(Math.abs(selectedWeekRemaining))}` : formatMoney(selectedWeekRemaining)}</strong></div></div>
+      <div className="selected-week-summary"><div className="selected-week-label"><span>هفته {toPersianDigits(activeWeekIndex + 1)}</span><strong>{selectedWeek.label}</strong></div><div className="selected-week-numbers"><span>سقف <strong>{budgetCardMoney(selectedWeekLimit)}</strong></span><span>خرج <strong>{budgetCardMoney(selectedWeekSpent)}</strong></span><span>مانده <strong className={selectedWeekRemaining < 0 ? 'over' : ''}>{selectedWeekRemaining < 0 ? `−${budgetCardMoney(Math.abs(selectedWeekRemaining))}` : budgetCardMoney(selectedWeekRemaining)}</strong></span></div></div>
     </section>
     <div className="budget-category-heading"><div><h2>سقف دسته‌ها در هفته {toPersianDigits(activeWeekIndex + 1)}</h2><p>برای تغییر این سقف‌ها، بودجه ماهانه همان دسته را ویرایش کن.</p></div></div>
     <div className="budget-list">{budgetEntries.map(([name, monthlyLimit]) => {
@@ -764,11 +762,12 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
           <div className="category-icon emoji-icon">{categoryEmoji(cat.icon, name)}</div>
           <div className="budget-card-copy">
             <strong title={name}>{name}</strong>
+            <small className="budget-month-reference">ماهانه: {monthlyLimit > 0 ? budgetCardMoney(monthlyLimit) : 'بدون سقف'}</small>
             {status && <small className={`limit-alert ${status}`}>{status === 'over' ? 'عبور از سقف' : 'نزدیک سقف'}</small>}
           </div>
           <button className="icon-button budget-edit-button" aria-label={`ویرایش بودجه ماهانه ${name}`} onClick={() => { setBudgetError(''); setEditing(name); setAmount(monthlyLimit ? String(monthlyLimit) : ''); }}><Pencil size={16}/></button>
         </div>
-        <div className="budget-week-metrics"><div><span>بودجه ماه</span><strong>{monthlyLimit > 0 ? budgetCardMoney(monthlyLimit) : 'بدون سقف'}</strong></div><div><span>سقف این هفته</span><strong>{weeklyLimit > 0 ? budgetCardMoney(weeklyLimit) : '—'}</strong></div><div><span>مصرف هفته</span><strong>{budgetCardMoney(spent)}</strong></div></div>
+        <div className="budget-week-line"><div><span>سقف هفته {toPersianDigits(activeWeekIndex + 1)}</span><strong>{weeklyLimit > 0 ? budgetCardMoney(weeklyLimit) : '—'}</strong></div><div><span>خرج هفته</span><strong>{budgetCardMoney(spent)}</strong></div></div>
         <div className="budget-progress" aria-label={`${pct} درصد مصرف شده`}><i style={{ width: `${Math.min(100, pct)}%` }}/></div>
       </div>;
     })}</div>
