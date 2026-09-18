@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
 import { Alert, Button, Card, Input, Popover, Progress, Segmented, Slider, Steps, Switch } from 'antd';
 import {
@@ -16,16 +16,11 @@ type Props = {
 };
 
 const money = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
-const readableToman = (rialValue: number) => {
-  const toman = Math.floor(rialValue / 10);
-  if (!toman) return 'کمتر از یک تومان';
-  return `${new Intl.NumberFormat('fa-IR', { notation: 'compact', maximumFractionDigits: 1 }).format(toman)} تومان`;
-};
 
 export default function Onboarding({ initialSetup, onComplete, onCancel }: Props) {
   const [step, setStep] = useState(1);
   const [monthlyIncome, setMonthlyIncome] = useState(initialSetup?.monthlyIncome ?? 0);
-  const [incomeInput, setIncomeInput] = useState(initialSetup?.monthlyIncome ? String(initialSetup.monthlyIncome * 10) : '');
+  const [incomeInput, setIncomeInput] = useState(initialSetup?.monthlyIncome ? String(initialSetup.monthlyIncome) : '');
   const [savingsPercentBps, setSavingsPercentBps] = useState(initialSetup?.savingsPercentBps ?? 0);
   const [savingsPercentInput, setSavingsPercentInput] = useState(String((initialSetup?.savingsPercentBps ?? 0) / 100));
   const [categories, setCategories] = useState<SetupCategory[]>(initialSetup?.categories ?? createDefaultCategories());
@@ -51,15 +46,31 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
 
   const changeIncome = (value: string) => {
     setIncomeInput(value);
-    const parsedRial = parsePositiveInteger(value);
-    setMonthlyIncome(parsedRial ? Math.floor(parsedRial / 10) : 0);
-    if (parsedRial) setError('');
+    const parsed = parsePositiveInteger(value);
+    setMonthlyIncome(parsed ?? 0);
+    if (parsed) setError('');
   };
 
   const changeSavingsPercent = (value: string) => {
     setSavingsPercentInput(value);
     const parsed = percentageToBps(value);
     if (parsed !== null) setSavingsPercentBps(parsed);
+    setError('');
+  };
+
+  const [savingsEnabled, setSavingsEnabled] = useState(savingsPercentBps > 0);
+  const lastSavingsPercentRef = useRef(savingsPercentBps > 0 ? savingsPercentBps : 1000);
+  const toggleSavings = (enabled: boolean) => {
+    setSavingsEnabled(enabled);
+    if (enabled) {
+      const restored = lastSavingsPercentRef.current || 1000;
+      setSavingsPercentBps(restored);
+      setSavingsPercentInput(String(restored / 100));
+    } else {
+      if (savingsPercentBps > 0) lastSavingsPercentRef.current = savingsPercentBps;
+      setSavingsPercentBps(0);
+      setSavingsPercentInput('0');
+    }
     setError('');
   };
 
@@ -160,11 +171,14 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
           <h1>درآمد ماهانه‌ات چقدر است؟</h1>
           <p>درآمدت را بین پس‌انداز و هزینه‌های ماهانه تقسیم کن. بودجه‌ی دسته‌ها فقط از مبلغ قابل‌هزینه محاسبه می‌شود.</p>
           <label className="income-label" htmlFor="monthly-income">درآمد ماهانه</label>
-          <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۲۰۰۰۰" aria-describedby="income-hint" prefix={<CircleDollarSign size={21}/>} suffix="ریال"/>
-          <div id="income-hint" className="income-preview">{incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${readableToman(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به ریال وارد کن؛ معادل تومان اینجا نمایش داده می‌شود.'}</div>
-          <label className="income-label" htmlFor="savings-percent">درصد هدف پس‌انداز</label>
-          <div className="savings-percent-control"><Input id="savings-percent" inputMode="decimal" value={savingsPercentInput} onChange={event => changeSavingsPercent(event.target.value)} onBlur={() => setSavingsPercentInput(String(savingsPercentBps / 100))} aria-describedby="savings-hint" suffix="٪"/><Slider className="savings-slider" min={0} max={100} step={1} value={savingsPercentBps / 100} onChange={value => { setSavingsPercentBps(value * 100); setSavingsPercentInput(String(value)); }}/></div>
-          <div id="savings-hint" className="income-preview">درصدی بین صفر تا صد؛ مبلغ پس‌انداز خودکار محاسبه می‌شود.</div>
+          <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" aria-describedby="income-hint" prefix={<CircleDollarSign size={21}/>} suffix="تومان"/>
+          <div id="income-hint" className="income-preview">{incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${money(parsePositiveInteger(incomeInput)!)} در ماه` : 'درآمد ماهانه‌ات را به تومان وارد کن.'}</div>
+          <div className="savings-toggle-row"><span>می‌خوای بخشی از درآمدت رو پس‌انداز کنی؟</span><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
+          {savingsEnabled ? <>
+            <label className="income-label" htmlFor="savings-percent">درصد هدف پس‌انداز</label>
+            <div className="savings-percent-control"><Input id="savings-percent" inputMode="decimal" value={savingsPercentInput} onChange={event => changeSavingsPercent(event.target.value)} onBlur={() => setSavingsPercentInput(String(savingsPercentBps / 100))} aria-describedby="savings-hint" suffix="٪"/><Slider className="savings-slider" min={0} max={100} step={1} value={savingsPercentBps / 100} onChange={value => { setSavingsPercentBps(value * 100); setSavingsPercentInput(String(value)); }}/></div>
+            <div id="savings-hint" className="income-preview">درصدی بین صفر تا صد؛ مبلغ پس‌انداز خودکار محاسبه می‌شود.</div>
+          </> : <div className="income-preview">فعلاً بدون پس‌انداز ادامه می‌دی؛ هر وقت خواستی می‌تونی از تنظیمات دوباره فعالش کنی.</div>}
           <div className="income-split"><div><span>برای پس‌انداز · {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪</span><strong>{money(savingsAmount)}</strong></div><div><span>قابل‌هزینه</span><strong>{money(spendableAmount)}</strong></div></div>
         </section>}
 

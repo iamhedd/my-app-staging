@@ -545,8 +545,7 @@ body{color:var(--ink)}
   .page-transactions .page-header,.page-budgets .page-header{display:none}
   .page-transactions .content,.page-budgets .content{padding-top:16px}
 
-  .page-dashboard .stat-card.savings{display:none}
-  .page-dashboard .stat-grid.has-savings .stat-card.mobile-wide{grid-column:auto}
+  .page-dashboard .stat-grid.has-savings .stat-card.mobile-wide{grid-column:1/-1}
   .page-dashboard .stat-grid.has-savings .stat-card.balance{grid-column:1/-1;min-height:92px}
   .page-dashboard .stat-grid.has-savings .stat-card.balance>.ant-card-body{min-height:92px;display:grid;grid-template-columns:auto 1fr;column-gap:12px}
   .page-dashboard .stat-grid.has-savings .stat-card.balance .stat-top{grid-row:1/4;margin:0}
@@ -868,4 +867,56 @@ body{color:var(--ink)}
   .page-reports .content>.reports-page>.page-header{display:block;margin:0 2px 18px}
   .reports-page>.page-header h1{display:none}
   .reports-page>.page-header p{display:block;max-width:none;font-size:13px;line-height:1.9}
+}
+
+/* Mobile dashboard: more breathing room between sections and inside cards */
+@media(max-width:650px){
+  .page-dashboard .content{padding:20px 18px 90px}
+  .page-dashboard .page-header{margin-bottom:22px}
+  .page-dashboard .stat-grid.has-savings{gap:14px;margin-bottom:22px}
+  .page-dashboard .stat-grid.has-savings .stat-card{min-height:132px}
+  .page-dashboard .stat-grid.has-savings .stat-card>.ant-card-body{min-height:132px;padding:16px 18px}
+  .page-dashboard .dashboard-grid{gap:18px;margin-bottom:22px}
+  .page-dashboard .panel-title{padding:18px 18px 0}
+  .page-dashboard .donut-row{padding:12px 18px 20px}
+  .page-dashboard .donut-row .legend{gap:14px}
+  .page-dashboard .donut-row .legend>div:not(.dashboard-category-empty){margin:0;padding:0}
+}
+
+/* Transaction rows: keep a single line so long titles truncate instead of wrapping under the amount/actions */
+.ant-transaction-list .ant-list-item{flex-wrap:nowrap;gap:10px}
+.ant-transaction-list .ant-list-item-meta{flex:1 1 auto;min-width:0}
+.ant-transaction-list .ant-list-item-meta-content{min-width:0}
+.ant-transaction-list .ant-list-item-meta-title,.ant-transaction-list .transaction-ant-title{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;margin:0}
+.ant-transaction-list .ant-list-item-meta-description{min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.ant-transaction-list .amount{flex:0 0 auto}
+.ant-transaction-list .ant-list-item-action{flex:0 0 auto;margin-inline-start:0;white-space:nowrap;display:flex;gap:2px}
+.ant-transaction-list .ant-list-item-action li{padding:0!important}
+.ant-transaction-list .ant-list-item-action-split{display:none}
+.ant-transaction-list .ant-list-item-action .ant-btn{width:32px;height:32px;min-width:32px;padding:0}
+@media(max-width:480px){
+  /* Too little width for title + amount + two action buttons on one line: move the amount to its own row */
+  .ant-transaction-list .ant-list-item{flex-wrap:wrap;row-gap:6px}
+  .ant-transaction-list .ant-list-item-meta{order:1}
+  .ant-transaction-list .ant-list-item-action{order:2}
+  .ant-transaction-list .amount{order:3;flex:0 0 100%;flex-direction:row;justify-content:space-between;padding-inline-start:42px}
+}
+
+/* Transactions: simple day switcher with an optional expandable calendar for jumping to any day */
+.transactions-day-picker{margin-bottom:14px;padding:6px 4px}
+.transactions-day-picker>.ant-card-body{padding:10px 12px}
+.day-switcher{display:grid;grid-template-columns:38px 1fr 38px;align-items:center;gap:8px}
+.day-switcher>button:first-child,.day-switcher>button:last-child{width:38px;height:38px;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--ink);display:grid;place-items:center}
+.day-switcher>button:first-child:disabled,.day-switcher>button:last-child:disabled{opacity:.35}
+.day-switcher-label{border:0;background:transparent;display:flex;align-items:center;justify-content:center;gap:6px;height:38px;font-size:13px;font-weight:700;color:var(--ink)}
+.transactions-day-picker .monthly-calendar{margin-top:12px}
+
+/* Onboarding: optional savings toggle */
+.savings-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;background:#f8f5f6;border:1px solid #e5dcdf;border-radius:14px;padding:12px 15px;margin:6px 0}
+.savings-toggle-row span{font-size:10px;font-weight:600;color:#4b4447}
+
+/* Review step: give the round category emoji its own column so it stops overlapping the category name */
+.review-list>div{grid-template-columns:30px 1fr 55px 130px}
+@media(max-width:650px){
+  .review-list>div{grid-template-columns:30px 1fr 40px}
 }

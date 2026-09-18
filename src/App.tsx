@@ -509,7 +509,7 @@ export default function App() {
         </header>
 
         <div className="content">
-          {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={totalSavings} setPage={setPage} openAdd={() => openNewTransaction()} />}
+          {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={totalSavings} openAdd={() => openNewTransaction()} />}
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
           {page === 'budgets' && <Budgets month={selectedMonth} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
@@ -635,7 +635,7 @@ function PageHeader({ eyebrow, title, description, action }: { eyebrow?: string;
   return <div className="page-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h1>{title}</h1>{description && <p>{description}</p>}</div>{action}</div>;
 }
 
-function Dashboard({ settings, profile, month, plan, categoryOptions, transactions, income, expense, savings, setPage, openAdd }: { settings: DevSettings; profile: UserProfile; month: JalaliMonth; plan: FinancialSetup; categoryOptions: Category[]; transactions: Transaction[]; income: number; expense: number; savings: number; setPage: (p: Page) => void; openAdd: () => void }) {
+function Dashboard({ settings, profile, month, plan, categoryOptions, transactions, income, expense, savings, openAdd }: { settings: DevSettings; profile: UserProfile; month: JalaliMonth; plan: FinancialSetup; categoryOptions: Category[]; transactions: Transaction[]; income: number; expense: number; savings: number; openAdd: () => void }) {
   const [dayPeriodGreeting, setDayPeriodGreeting] = useState(() => timeGreeting());
   useEffect(() => {
     let timeoutId: number;
@@ -682,9 +682,6 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
         </div>
       </Card>
     </section>
-    <Card className="panel transactions-panel" variant="borderless"><PanelTitle title="تراکنش‌های اخیر" subtitle="آخرین فعالیت‌های مالی شما" customAction={<Button type="link" onClick={() => setPage('transactions')}>مشاهده همه</Button>} />
-      <TransactionList categoryOptions={categoryOptions} items={transactions.slice(0, 5)} />
-    </Card>
   </>;
 }
 
@@ -713,11 +710,47 @@ function TransactionList({ categoryOptions, items, onDelete, onEdit }: { categor
 
 function Transactions({ month, categoryOptions, transactions, onDelete, onEdit, openAdd }: { month: JalaliMonth; categoryOptions: Category[]; transactions: Transaction[]; onDelete: (id: string) => void; onEdit: (transaction: Transaction) => void; openAdd: () => void }) {
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<'all' | 'expense'>('all');
-  const filtered = transactions.filter(t => isInJalaliMonth(t.date, month) && (filter === 'all' || t.type === filter) && (t.title.includes(query) || t.category.includes(query)));
+  const [mode, setMode] = useState<'all' | 'daily'>('all');
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = todayJalali();
+    return jalaliDateKey(month.year, month.month, today.year === month.year && today.month === month.month ? today.day : 1);
+  });
+  useEffect(() => {
+    const today = todayJalali();
+    setSelectedDay(jalaliDateKey(month.year, month.month, today.year === month.year && today.month === month.month ? today.day : 1));
+  }, [month.key]);
+  const [showDayGrid, setShowDayGrid] = useState(false);
+  useEffect(() => setShowDayGrid(false), [mode, month.key]);
+  const monthTransactions = transactions.filter(t => isInJalaliMonth(t.date, month) && (t.title.includes(query) || t.category.includes(query)));
+  const filtered = mode === 'daily' ? monthTransactions.filter(t => t.date === selectedDay) : monthTransactions;
+  const daysWithData = new Set(monthTransactions.map(t => t.date));
+  const selectedDayInfo = parseJalaliDate(selectedDay) || todayJalali();
+  const firstDayOfMonth = jalaliToDate(jalaliDateKey(month.year, month.month, 1));
+  const dayGridOffset = firstDayOfMonth ? (firstDayOfMonth.getDay() + 1) % 7 : 0;
+  const weekdayShorts = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
   return <><PageHeader title="تراکنش‌ها" description="همه‌ی ورودی‌ها و خروجی‌های مالی‌ات را یک‌جا مدیریت کن." action={<Button type="primary" className="desktop-add" icon={<Plus size={18}/>} onClick={openAdd}>تراکنش جدید</Button>} />
-    <Card className="transactions-ant-filters"><Input allowClear prefix={<Search size={17}/>} value={query} onChange={event => setQuery(event.target.value)} placeholder="جست‌وجوی تراکنش..."/><Tabs activeKey={filter} onChange={key => setFilter(key as 'all' | 'expense')} items={[{key:'all',label:'همه'},{key:'expense',label:'هزینه‌ها'}]}/></Card>
-    <Card className="transactions-page ant-transactions-card" title={`${new Intl.NumberFormat('fa-IR').format(filtered.length)} تراکنش`} extra={month.label}><TransactionList categoryOptions={categoryOptions} items={filtered} onDelete={onDelete} onEdit={onEdit}/></Card>
+    <Card className="transactions-ant-filters">
+      <Input allowClear prefix={<Search size={17}/>} value={query} onChange={event => setQuery(event.target.value)} placeholder="جست‌وجوی تراکنش..."/>
+      <Tabs activeKey={mode} onChange={key => setMode(key as 'all' | 'daily')} items={[{key:'all',label:'همه‌چیز'},{key:'daily',label:'روز به روز'}]}/>
+    </Card>
+    {mode === 'daily' && <Card className="transactions-day-picker">
+      <div className="day-switcher">
+        <button type="button" aria-label="روز قبل" disabled={selectedDayInfo.day <= 1} onClick={() => setSelectedDay(jalaliDateKey(month.year, month.month, selectedDayInfo.day - 1))}><ChevronRight size={17}/></button>
+        <button type="button" className="day-switcher-label" onClick={() => setShowDayGrid(value => !value)}>{displayJalaliDate(selectedDay)}<ChevronDown size={14}/></button>
+        <button type="button" aria-label="روز بعد" disabled={selectedDayInfo.day >= month.length} onClick={() => setSelectedDay(jalaliDateKey(month.year, month.month, selectedDayInfo.day + 1))}><ChevronLeft size={17}/></button>
+      </div>
+      {showDayGrid && <div className="monthly-calendar" role="grid" aria-label={`انتخاب روز ${month.label}`}>
+        {weekdayShorts.map(short => <div className="calendar-weekday" key={short}>{short}</div>)}
+        {Array.from({ length: dayGridOffset }, (_, index) => <div className="calendar-empty" key={`empty-${index}`}/>)}
+        {Array.from({ length: month.length }, (_, index) => index + 1).map(day => {
+          const dateKey = jalaliDateKey(month.year, month.month, day);
+          return <button key={dateKey} type="button" className={`calendar-day ${dateKey === selectedDay ? 'selected' : ''} ${daysWithData.has(dateKey) ? 'has-expense' : ''}`} onClick={() => { setSelectedDay(dateKey); setShowDayGrid(false); }}><span>{toPersianDigits(day)}</span></button>;
+        })}
+      </div>}
+    </Card>}
+    <Card className="transactions-page ant-transactions-card" title={`${new Intl.NumberFormat('fa-IR').format(filtered.length)} تراکنش`} extra={mode === 'daily' ? displayJalaliDate(selectedDay) : month.label}>
+      <TransactionList categoryOptions={categoryOptions} items={filtered} onDelete={onDelete} onEdit={onEdit}/>
+    </Card>
   </>;
 }
 
