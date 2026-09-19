@@ -129,7 +129,8 @@ const mobileNavItems: { id: Page; label: string; icon: typeof LayoutDashboard }[
 
 const avatarOptions = [
   '/avatars/cow-01.png', '/avatars/cow-02.png', '/avatars/cow-03.png',
-  '/avatars/cow-04.png', '/avatars/cow-05.png',
+  '/avatars/cow-04.png', '/avatars/cow-05.png', '/avatars/cow-06.png',
+  '/avatars/cow-07.png', '/avatars/cow-08.png', '/avatars/cow-09.png',
 ];
 const emptyProfile: UserProfile = { name: 'کاربر گاو', email: '', avatarUrl: avatarOptions[0] };
 
@@ -936,7 +937,7 @@ function ProfilePage({ profile, setProfile, onLogout, notify }: { profile: UserP
     </div>
     <Modal open={showAvatarPicker} title="آواتارت را انتخاب کن" onCancel={() => !savingAvatar && setShowAvatarPicker(false)} footer={null} destroyOnHidden>
       <p className="ant-modal-description">هر وقت خواستی می‌توانی دوباره تغییرش بدهی.</p>
-      <div className="avatar-grid">{avatarOptions.map((avatar, index) => <Button key={avatar} disabled={savingAvatar} className={selectedAvatar === avatar ? 'selected' : ''} onClick={() => setSelectedAvatar(avatar)}><img src={avatar} alt={`آواتار گاو ${index + 1}`}/>{selectedAvatar === avatar && <span><Check size={17}/></span>}</Button>)}</div>
+      <div className="avatar-grid">{avatarOptions.map((avatar, index) => <Button key={avatar} disabled={savingAvatar} className={selectedAvatar === avatar ? 'selected' : ''} onClick={() => setSelectedAvatar(avatar)}><img src={avatar} alt={`آواتار گاو ${index + 1}`}/></Button>)}</div>
       {avatarError && <Alert type="error" showIcon message={avatarError}/>}
       <div className="ant-modal-actions"><Button disabled={savingAvatar} onClick={() => setShowAvatarPicker(false)}>انصراف</Button><Button type="primary" loading={savingAvatar} icon={!savingAvatar ? <Check size={18}/> : undefined} onClick={saveAvatar}>{avatarError ? 'تلاش دوباره' : 'انتخاب این آواتار'}</Button></div>
     </Modal>
