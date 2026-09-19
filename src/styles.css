@@ -963,3 +963,9 @@ body{color:var(--ink)}
   .intro-onboarding-actions button{height:44px;padding-inline:10px;white-space:nowrap}
   .intro-onboarding-footnote{flex:0 0 18px;margin:2px 0 0}
 }
+
+/* Keep the supplied app icon's rounded-square shape and original colors. */
+.brand-mark{
+  border:0!important;border-radius:12px!important;background:transparent!important;box-shadow:none!important;
+}
+.brand-mark img{filter:none!important;object-fit:cover}
