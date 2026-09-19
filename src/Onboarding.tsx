@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Input, Popover, Progress, Segmented, Slider, Steps, Switch } from 'antd';
+import { Alert, Button, Card, Input, Popover, Progress, Segmented, Slider, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -162,8 +162,6 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
     </header>
 
     <section className="onboarding-shell">
-      <Steps className="step-indicator ant-onboarding-steps" current={step - 1} responsive={false} items={[{title:'درآمد'},{title:'بودجه‌ها'},{title:'مرور'}]} aria-label={`مرحله ${step} از ۳`}/>
-
       <Card className="onboarding-card" variant="borderless">
         {step === 1 && <section className="onboarding-step income-step">
           <div className="step-icon"><WalletCards size={26}/></div>

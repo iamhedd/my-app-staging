@@ -138,7 +138,9 @@ const onboardingSlides = [
 
 export default function App() {
   const isDesignReviewRoute = window.location.pathname.replace(/\/+$/, '') === '/dev/review';
-  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-onboarding-complete-v1', false);
+  // Version the product intro independently so an updated intro is shown once
+  // even to browsers that completed the older sequence.
+  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-intro-onboarding-complete-v2', false);
   const [activeUserKey, setActiveUserKey] = useStoredState<string>('gav-active-user', 'local-user');
   const [page, setPage] = useState<Page>('dashboard');
   const [transactions, setTransactions] = useStoredState<Transaction[]>(`gav-transactions-v2:${activeUserKey}`, initialTransactions);
