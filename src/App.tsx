@@ -530,7 +530,7 @@ export default function App() {
         </div>
 
         {!['profile', 'settings', 'budgets', 'dev'].includes(page) && <button className="fab" onClick={() => openNewTransaction()}><Plus size={24} /><span>ثبت تراکنش</span></button>}
-        <nav className="mobile-nav">{mobileNavItems.map(item => <button key={item.id} className={page === item.id ? 'active' : ''} onClick={() => setPage(item.id)}><item.icon size={21} /><span>{item.label}</span></button>)}</nav>
+        <nav className="mobile-nav" aria-label="ناوبری اصلی">{mobileNavItems.map(item => <button key={item.id} aria-label={item.label} className={page === item.id ? 'active' : ''} onClick={() => setPage(item.id)}><item.icon size={22} /></button>)}</nav>
       </main>
 
       {(showAdd || editingTransaction) && <TransactionModal initialTransaction={editingTransaction} initialDate={newTransactionDate} categoryOptions={expenseCategories} onClose={() => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(null); }} onSubmit={editingTransaction ? updateTransaction : addTransaction} />}
