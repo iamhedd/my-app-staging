@@ -157,7 +157,7 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
 
   return <main className="onboarding-page" dir="rtl">
     <header className="onboarding-header">
-      <div className="onboarding-brand"><img src="/gav-logo.png" alt="لوگوی گاو"/><div><strong>گاو</strong><span>شروع مدیریت مالی شخصی</span></div></div>
+      <div className="onboarding-brand"><img src="/momo-app-icon.png" alt="لوگوی گاو"/><div><strong>گاو</strong><span>شروع مدیریت مالی شخصی</span></div></div>
       {onCancel && <Button className="onboarding-close" onClick={onCancel}>بازگشت به تنظیمات</Button>}
     </header>
 

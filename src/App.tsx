@@ -108,7 +108,7 @@ function CategoryIcon({ category, size = 18 }: { category: string; size?: number
 }
 
 function BrandMark() {
-  return <div className="brand-mark"><img src="/gav-logo.png" alt="لوگوی گاو" /></div>;
+  return <div className="brand-mark"><img src="/momo-app-icon.png" alt="لوگوی گاو" /></div>;
 }
 
 const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [

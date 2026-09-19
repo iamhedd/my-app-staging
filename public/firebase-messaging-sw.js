@@ -25,7 +25,7 @@ if (firebaseEnabled) {
     const title = payload.notification?.title || payload.data?.title || 'گاو';
     const options = {
       body: payload.notification?.body || payload.data?.body || 'یک اعلان جدید داری.',
-      icon: '/gav-logo.png',
+      icon: '/momo-app-icon.png',
       badge: '/notification-icon.svg',
       data: { url: payload.data?.url || '/' },
       dir: 'rtl',

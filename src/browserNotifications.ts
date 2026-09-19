@@ -9,7 +9,7 @@ export async function showBrowserNotification(payload: BrowserNotificationPayloa
   if (!('Notification' in window) || Notification.permission !== 'granted') return false;
   const options: NotificationOptions = {
     body: payload.body,
-    icon: '/gav-logo.png',
+    icon: '/momo-app-icon.png',
     badge: '/notification-icon.svg',
     tag: payload.tag,
     data: { url: payload.url || '/' },
