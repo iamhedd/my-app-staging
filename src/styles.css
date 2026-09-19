@@ -928,16 +928,12 @@ body{color:var(--ink)}
 
 /* Product intro: visually distinct from the white application workspace. */
 .intro-onboarding-page{
-  background:linear-gradient(180deg,#F6F6F6 0%,#EEEEEE 100%)!important;
+  background:linear-gradient(155deg,#F2A9C0 0%,#FBE4EC 42%,#FFFFFF 100%)!important;
 }
 .intro-onboarding-card{
   background:transparent!important;
   border:0!important;
   box-shadow:none!important;
-}
-.intro-onboarding-top>button{
-  border-color:#F2A9C0;
-  background:#FFFFFFCC;
 }
 .intro-onboarding-copy{min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .intro-onboarding-actions{width:min(300px,100%);margin-inline:auto;display:grid;grid-template-columns:1fr 1fr;align-items:center}
@@ -969,3 +965,19 @@ body{color:var(--ink)}
   border:0!important;border-radius:12px!important;background:transparent!important;box-shadow:none!important;
 }
 .brand-mark img{filter:none!important;object-fit:cover}
+
+/* Larger intro artwork with a consistent visual footprint across slides. */
+.intro-onboarding-visual{width:340px;height:300px}
+.intro-onboarding-visual>img.character-art{width:320px;height:292px}
+.intro-onboarding-visual>img.full-body-art{width:230px;height:292px}
+.intro-onboarding-visual>img.positive-art{width:310px;height:288px}
+.intro-onboarding-next{background:var(--brand-accent)!important;box-shadow:0 8px 22px #DF789933}
+.intro-onboarding-dots button.active{background:var(--brand-accent)}
+
+@media(max-width:650px){
+  .intro-onboarding-card{grid-template-rows:245px 72px 18px 48px}
+  .intro-onboarding-visual{width:min(280px,100%);height:245px}
+  .intro-onboarding-visual>img.character-art{width:270px;height:242px}
+  .intro-onboarding-visual>img.full-body-art{width:190px;height:242px}
+  .intro-onboarding-visual>img.positive-art{width:260px;height:238px}
+}

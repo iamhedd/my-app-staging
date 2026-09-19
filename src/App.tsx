@@ -547,7 +547,7 @@ function IntroOnboarding({ onComplete }: { onComplete: () => void }) {
   const isLast = step === onboardingSlides.length - 1;
 
   return <main className="intro-onboarding-page">
-    <header className="intro-onboarding-top"><div className="intro-onboarding-brand"><BrandMark/><strong>گاو</strong></div><button onClick={onComplete}>رد کردن</button></header>
+    <header className="intro-onboarding-top"><div className="intro-onboarding-brand"><BrandMark/><strong>گاو</strong></div></header>
     <section className="intro-onboarding-card">
       <div className="intro-onboarding-visual"><img className={slide.imageClass} src={slide.image} alt="آواتار گاو"/></div>
       <div className="intro-onboarding-copy" key={step}>{slide.kicker && <span>{slide.kicker}</span>}<h1>{slide.title}</h1>{slide.description && <p>{slide.description}</p>}</div>
