@@ -829,7 +829,7 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
   };
   return <><PageHeader title="بودجه‌بندی" action={<InfoHint text="برای هر دسته سقف تعیین کن و کنترل هزینه‌ها رو در دست بگیر." label="راهنمای بودجه‌بندی"/>} />
     <div className="budget-hero">
-      <div className="budget-hero-copy"><span>خلاصه {month.label}</span><strong>{month.label}</strong><small className="budget-money-scale">واحد: هزار تومان</small></div>
+      <div className="budget-hero-copy"><strong>{month.label}</strong></div>
       <div className="budget-summary-values">
         <div><span>بودجه ماه</span><strong>{budgetCardMoney(totalBudget)}</strong></div>
         <div><span>مصرف</span><strong>{budgetCardMoney(totalSpent)}</strong></div>
