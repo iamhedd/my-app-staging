@@ -552,7 +552,7 @@ function IntroOnboarding({ onComplete }: { onComplete: () => void }) {
       <div className="intro-onboarding-visual"><img className={slide.imageClass} src={slide.image} alt="آواتار گاو"/></div>
       <div className="intro-onboarding-copy" key={step}>{slide.kicker && <span>{slide.kicker}</span>}<h1>{slide.title}</h1>{slide.description && <p>{slide.description}</p>}</div>
       <div className="intro-onboarding-dots">{onboardingSlides.map((_, index) => <button key={index} aria-label={`مرحله ${index + 1}`} className={index === step ? 'active' : ''} onClick={() => setStep(index)}/>)}</div>
-      <div className="intro-onboarding-actions">{step > 0 && <button className="intro-onboarding-back" onClick={() => setStep(step - 1)}>قبلی</button>}<button className="intro-onboarding-next" onClick={() => isLast ? onComplete() : setStep(step + 1)}>{isLast ? 'شروع مدیریت مالی' : 'ادامه'}<span>←</span></button></div>
+      <div className="intro-onboarding-actions">{step > 0 ? <button className="intro-onboarding-back" onClick={() => setStep(step - 1)}>قبلی</button> : <span className="intro-action-placeholder" aria-hidden="true"/>}<button className="intro-onboarding-next" onClick={() => isLast ? onComplete() : setStep(step + 1)}>{isLast ? 'شروع مدیریت مالی' : 'ادامه'}<span>←</span></button></div>
     </section>
     <p className="intro-onboarding-footnote">اطلاعات مالی تو فقط متعلق به خودت است.</p>
   </main>;

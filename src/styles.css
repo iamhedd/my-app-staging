@@ -928,13 +928,38 @@ body{color:var(--ink)}
 
 /* Product intro: visually distinct from the white application workspace. */
 .intro-onboarding-page{
-  background:linear-gradient(145deg,#FBE4EC 0%,#FFFFFF 58%,#F6F6F6 100%)!important;
+  background:linear-gradient(180deg,#F6F6F6 0%,#EEEEEE 100%)!important;
 }
 .intro-onboarding-card{
-  border-color:#F2A9C0;
-  box-shadow:0 24px 70px #BE52751A;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
 }
 .intro-onboarding-top>button{
   border-color:#F2A9C0;
   background:#FFFFFFCC;
+}
+.intro-onboarding-copy{min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.intro-onboarding-actions{width:min(300px,100%);margin-inline:auto;display:grid;grid-template-columns:1fr 1fr;align-items:center}
+.intro-onboarding-actions button{width:100%;justify-content:center}
+.intro-action-placeholder{display:block;visibility:hidden}
+
+@media(max-width:650px){
+  .intro-onboarding-page{
+    width:100%;height:100dvh;min-height:100dvh;max-height:100dvh;overflow:hidden;
+    padding:14px 12px max(14px,env(safe-area-inset-bottom));overscroll-behavior:none;
+    -webkit-text-size-adjust:100%;text-size-adjust:100%;touch-action:manipulation;
+  }
+  .intro-onboarding-top{flex:0 0 42px}
+  .intro-onboarding-card{
+    flex:1;min-height:0;margin:0 auto;padding:8px 0 10px!important;
+    display:grid;grid-template-rows:195px 72px 18px 48px;align-content:center;
+  }
+  .intro-onboarding-visual{width:220px;height:195px;margin:0 auto}
+  .intro-onboarding-copy{min-height:72px;height:72px;overflow:hidden}
+  .intro-onboarding-copy h1{margin:0;max-width:330px;line-height:1.55}
+  .intro-onboarding-dots{height:18px;margin:0;align-items:center}
+  .intro-onboarding-actions{height:48px;min-height:48px;margin:0 auto;gap:8px}
+  .intro-onboarding-actions button{height:44px;padding-inline:10px;white-space:nowrap}
+  .intro-onboarding-footnote{flex:0 0 18px;margin:2px 0 0}
 }
