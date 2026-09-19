@@ -131,15 +131,16 @@ const avatarOptions = [
 const emptyProfile: UserProfile = { name: 'کاربر گاو', email: '', avatarUrl: avatarOptions[0] };
 
 const onboardingSlides = [
-  { image: '/momo-analyzing-transparent.png', imageClass: 'character-art', icon: WalletCards, kicker: 'همه‌چیز زیر کنترل', title: 'پولت را ساده‌تر مدیریت کن', description: 'درآمد و هزینه‌هایت را سریع ثبت کن و همیشه تصویر روشنی از مانده‌ی حسابت داشته باش.' },
-  { image: '/avatars/cow-04.png', imageClass: '', icon: Target, kicker: 'خرج‌کردن هوشمند', title: 'برای هر دسته سقف داشته باش', description: 'بودجه‌ی ماهانه تعیین کن و گاو خودش می‌گوید هر هفته چقدر اجازه‌ی خرج‌کردن داری.' },
+  { image: '/momo-analyzing-transparent.png', imageClass: 'character-art', icon: WalletCards, kicker: '', title: 'پولت را ساده‌تر مدیریت کن', description: '' },
+  { image: '/momo-full-body-transparent.png', imageClass: 'character-art full-body-art', icon: Target, kicker: '', title: 'برای هر دسته سقف داشته باش', description: '' },
+  { image: '/avatars/cow-03.png', imageClass: '', icon: BarChart3, kicker: '', title: 'الگوی مالی‌ات را بشناس', description: '' },
 ];
 
 export default function App() {
   const isDesignReviewRoute = window.location.pathname.replace(/\/+$/, '') === '/dev/review';
   // Version the product intro independently so an updated intro is shown once
   // even to browsers that completed the older sequence.
-  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-intro-onboarding-complete-v3', false);
+  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-intro-onboarding-complete-v4', false);
   const [activeUserKey, setActiveUserKey] = useStoredState<string>('gav-active-user', 'local-user');
   const [page, setPage] = useState<Page>('dashboard');
   const [transactions, setTransactions] = useStoredState<Transaction[]>(`gav-transactions-v2:${activeUserKey}`, initialTransactions);
@@ -549,8 +550,8 @@ function IntroOnboarding({ onComplete }: { onComplete: () => void }) {
   return <main className="intro-onboarding-page">
     <header className="intro-onboarding-top"><div className="intro-onboarding-brand"><BrandMark/><strong>گاو</strong></div><button onClick={onComplete}>رد کردن</button></header>
     <section className="intro-onboarding-card">
-      <div className="intro-onboarding-visual"><div className="intro-onboarding-orbit orbit-one"/><div className="intro-onboarding-orbit orbit-two"/><img className={slide.imageClass} src={slide.image} alt="آواتار گاو"/><span><SlideIcon size={24}/></span></div>
-      <div className="intro-onboarding-copy" key={step}><span>{slide.kicker}</span><h1>{slide.title}</h1><p>{slide.description}</p></div>
+      <div className="intro-onboarding-visual"><div className="intro-onboarding-orbit orbit-one"/><img className={slide.imageClass} src={slide.image} alt="آواتار گاو"/><span><SlideIcon size={24}/></span></div>
+      <div className="intro-onboarding-copy" key={step}>{slide.kicker && <span>{slide.kicker}</span>}<h1>{slide.title}</h1>{slide.description && <p>{slide.description}</p>}</div>
       <div className="intro-onboarding-dots">{onboardingSlides.map((_, index) => <button key={index} aria-label={`مرحله ${index + 1}`} className={index === step ? 'active' : ''} onClick={() => setStep(index)}/>)}</div>
       <div className="intro-onboarding-actions">{step > 0 && <button className="intro-onboarding-back" onClick={() => setStep(step - 1)}>قبلی</button>}<button className="intro-onboarding-next" onClick={() => isLast ? onComplete() : setStep(step + 1)}>{isLast ? 'شروع مدیریت مالی' : 'ادامه'}<span>←</span></button></div>
     </section>
