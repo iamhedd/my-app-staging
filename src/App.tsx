@@ -75,8 +75,8 @@ const budgetAlertLedgerKey = (userKey: string) => `gav-budget-alert-ledger-v1:${
 const nightlyReminderKey = (userKey: string) => `gav-nightly-reminder-last-v1:${userKey}`;
 
 const formatMoney = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
-const formatMoneyNumber = (value: number) => new Intl.NumberFormat('fa-IR').format(value);
-const budgetCardMoney = (value: number) => formatMoney(value);
+const formatThousandsNumber = (value: number) => new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 3 }).format(value / 1_000);
+const budgetCardMoney = (value: number) => formatThousandsNumber(value);
 function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
     try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; }
@@ -671,10 +671,10 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
     </section>
     <section className="dashboard-grid">
       <Card className="panel trend-panel" variant="borderless"><PanelTitle title="روند هزینه‌ها" subtitle={`هزینه‌ی روزانه در ${month.label}`} action={month.label} />
-        <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trendData}><defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#DF7899" stopOpacity={0.38}/><stop offset="100%" stopColor="#DF7899" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#E8E8E8" vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#707070', fontSize: 12 }}/><YAxis hide/><Tooltip contentStyle={{ border: 'none', borderRadius: 16, boxShadow: '0 12px 40px #1717171a', direction: 'rtl' }} formatter={(v) => [formatMoney(Number(v) * 1000), 'هزینه']}/><Area type="monotone" dataKey="value" stroke="#171717" strokeWidth={2.5} fill="url(#trendFill)" dot={{ r: 3, fill: '#171717', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#DF7899', strokeWidth: 3, stroke: '#fff' }}/></AreaChart></ResponsiveContainer></div>
+        <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trendData}><defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#DF7899" stopOpacity={0.38}/><stop offset="100%" stopColor="#DF7899" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#E8E8E8" vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#707070', fontSize: 12 }}/><YAxis hide/><Tooltip contentStyle={{ border: 'none', borderRadius: 16, boxShadow: '0 12px 40px #1717171a', direction: 'rtl' }} formatter={(v) => [`${formatThousandsNumber(Number(v) * 1000)} هزار تومان`, 'هزینه']}/><Area type="monotone" dataKey="value" stroke="#171717" strokeWidth={2.5} fill="url(#trendFill)" dot={{ r: 3, fill: '#171717', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#DF7899', strokeWidth: 3, stroke: '#fff' }}/></AreaChart></ResponsiveContainer></div>
       </Card>
       <Card className="panel category-panel" variant="borderless"><PanelTitle title="هزینه بر اساس دسته" subtitle="سهم دسته‌ها از کل هزینه" />
-        <div className={`donut-row ${byCategory.length ? '' : 'empty'}`}><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{formatMoneyNumber(expense)}</strong><span>کل هزینه</span></div></div>
+        <div className={`donut-row ${byCategory.length ? '' : 'empty'}`}><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{formatThousandsNumber(expense)}</strong><span>هزار تومان · کل هزینه</span></div></div>
           <div className="legend">{byCategory.slice(0, 5).map(c => <div key={c.name}><span style={{ background: c.color }}></span><label>{c.name}</label><b>{Math.round(c.value / Math.max(expense, 1) * 100)}٪</b></div>)}{!byCategory.length && <div className="dashboard-category-empty">هنوز هزینه‌ای ثبت نشده است.</div>}</div>
         </div>
       </Card>
@@ -773,7 +773,7 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
     </section>
     <section className="panel report-comparison-card">
       <PanelTitle title="مقایسه ماهانه و روند پس‌انداز" subtitle="هزینه و پس‌انداز در ۶ ماه اخیر"/>
-      {hasComparisonData ? <div className="report-comparison-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...comparison].reverse()} barCategoryGap="20%"><Tooltip cursor={{fill:'#F6F6F6'}} contentStyle={{border:'1px solid #E8E8E8',borderRadius:12,direction:'rtl'}} formatter={(value, name) => [formatMoney(Number(value) * 1000), name === 'savings' ? 'پس‌انداز' : 'هزینه']}/><Bar dataKey="savings" stackId="monthly" fill="#BE5275" radius={[0,0,4,4]}/><Bar dataKey="expense" stackId="monthly" fill="#F7D5DE" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div> : <Empty className="report-chart-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="برای نمایش روند، تراکنش ثبت کن."/>}
+      {hasComparisonData ? <div className="report-comparison-chart"><ResponsiveContainer width="100%" height="100%"><BarChart data={[...comparison].reverse()} barCategoryGap="20%"><Tooltip cursor={{fill:'#F6F6F6'}} contentStyle={{border:'1px solid #E8E8E8',borderRadius:12,direction:'rtl'}} formatter={(value, name) => [`${formatThousandsNumber(Number(value) * 1000)} هزار تومان`, name === 'savings' ? 'پس‌انداز' : 'هزینه']}/><Bar dataKey="savings" stackId="monthly" fill="#BE5275" radius={[0,0,4,4]}/><Bar dataKey="expense" stackId="monthly" fill="#F7D5DE" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div> : <Empty className="report-chart-empty" image={Empty.PRESENTED_IMAGE_SIMPLE} description="برای نمایش روند، تراکنش ثبت کن."/>}
       <div className="chart-legend"><span><i className="expense-dot"/>هزینه</span><span><i className="savings-dot"/>پس‌انداز</span></div>
     </section>
     <section className="panel report-category-card">
@@ -825,11 +825,11 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
   };
   return <><PageHeader title="بودجه‌بندی" action={<InfoHint text="برای هر دسته سقف تعیین کن و کنترل هزینه‌ها رو در دست بگیر." label="راهنمای بودجه‌بندی"/>} />
     <div className="budget-hero">
-      <div className="budget-hero-copy"><span>خلاصه {month.label}</span><strong>{month.label}</strong></div>
+      <div className="budget-hero-copy"><span>خلاصه {month.label}</span><strong>{month.label}</strong><small className="budget-money-scale">واحد: هزار تومان</small></div>
       <div className="budget-summary-values">
-        <div><span>بودجه ماه</span><strong>{formatMoney(totalBudget)}</strong></div>
-        <div><span>مصرف</span><strong>{formatMoney(totalSpent)}</strong></div>
-        <div><span>مانده</span><strong className={totalRemaining < 0 ? 'over' : ''}>{totalRemaining < 0 ? `− ${formatMoney(Math.abs(totalRemaining))}` : formatMoney(totalRemaining)}</strong></div>
+        <div><span>بودجه ماه</span><strong>{budgetCardMoney(totalBudget)}</strong></div>
+        <div><span>مصرف</span><strong>{budgetCardMoney(totalSpent)}</strong></div>
+        <div><span>مانده</span><strong className={totalRemaining < 0 ? 'over' : ''}>{totalRemaining < 0 ? `− ${budgetCardMoney(Math.abs(totalRemaining))}` : budgetCardMoney(totalRemaining)}</strong></div>
       </div>
       <div className="budget-ring" style={{'--progress':`${Math.min(100,totalProgress)*3.6}deg`} as React.CSSProperties}><div><strong>{totalProgress}٪</strong><span>مصرف ماه</span></div></div>
     </div>
