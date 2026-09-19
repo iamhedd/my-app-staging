@@ -925,3 +925,16 @@ body{color:var(--ink)}
 @media(max-width:650px){
   .review-list>div{grid-template-columns:30px 1fr 40px}
 }
+
+/* Product intro: visually distinct from the white application workspace. */
+.intro-onboarding-page{
+  background:linear-gradient(145deg,#FBE4EC 0%,#FFFFFF 58%,#F6F6F6 100%)!important;
+}
+.intro-onboarding-card{
+  border-color:#F2A9C0;
+  box-shadow:0 24px 70px #BE52751A;
+}
+.intro-onboarding-top>button{
+  border-color:#F2A9C0;
+  background:#FFFFFFCC;
+}
