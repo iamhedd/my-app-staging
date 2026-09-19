@@ -140,7 +140,7 @@ export default function App() {
   const isDesignReviewRoute = window.location.pathname.replace(/\/+$/, '') === '/dev/review';
   // Version the product intro independently so an updated intro is shown once
   // even to browsers that completed the older sequence.
-  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-intro-onboarding-complete-v5', false);
+  const [onboardingComplete, setOnboardingComplete] = useStoredState<boolean>('gav-intro-onboarding-complete-v6', false);
   const [activeUserKey, setActiveUserKey] = useStoredState<string>('gav-active-user', 'local-user');
   const [page, setPage] = useState<Page>('dashboard');
   const [transactions, setTransactions] = useStoredState<Transaction[]>(`gav-transactions-v2:${activeUserKey}`, initialTransactions);
@@ -413,7 +413,10 @@ export default function App() {
   const withTheme = (content: React.ReactNode) => <ConfigProvider theme={{ token: { colorPrimary: devSettings.accentColor || defaultDevSettings.accentColor } }}>{content}</ConfigProvider>;
   const lazyFallback = <div className="lazy-page-fallback"><Spin size="large" tip="در حال آماده‌سازی…"><span /></Spin></div>;
 
-  if (!isDesignReviewRoute && !onboardingComplete && devSettings.showIntroOnboarding) return withTheme(<IntroOnboarding onComplete={() => setOnboardingComplete(true)} />);
+  if (!isDesignReviewRoute && !onboardingComplete && devSettings.showIntroOnboarding) return withTheme(<IntroOnboarding onComplete={() => {
+    setEditingSetup(true);
+    setOnboardingComplete(true);
+  }} />);
   if (authStatus === 'loading') return <FullPageState title="در حال بررسی حساب" description="نشست امن شما در حال بازیابی است." loading/>;
   if (authStatus === 'error') return <FullPageState title="اتصال حساب انجام نشد" description={authError} actionLabel="تلاش دوباره" onAction={retrySession}/>;
   if (authStatus === 'unauthenticated') return <AuthScreen onAuthenticated={async user => {
