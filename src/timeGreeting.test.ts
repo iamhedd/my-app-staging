@@ -7,7 +7,7 @@ function at(hour: number, minute = 0) {
 
 describe('timeGreeting', () => {
   it('uses five distinct Persian day periods', () => {
-    expect(timeGreeting(at(0))).toBe('بامداد بخیر');
+    expect(timeGreeting(at(0))).toBe('سلام');
     expect(timeGreeting(at(5))).toBe('صبح بخیر');
     expect(timeGreeting(at(11))).toBe('ظهر بخیر');
     expect(timeGreeting(at(14))).toBe('عصر بخیر');

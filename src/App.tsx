@@ -25,7 +25,7 @@ import {
 } from './notificationRules';
 import { categoryEmoji } from './categoryEmoji';
 import { jalaaliMonthLength } from 'jalaali-js';
-import { dashboardGreetingText, defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
+import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
@@ -668,7 +668,7 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
     { label: 'پس‌انداز هدف', value: savingsTarget, type: 'savings', note: `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(plan.savingsPercentBps / 100)}٪ هدف · ${formatMoney(savings)} ثبت‌شده` },
   ];
   return <>
-    <PageHeader eyebrow={dayPeriodGreeting} title={dashboardGreetingText(settings.dashboardGreeting, profile.name)} description={interpolateDevText(settings.dashboardDescription, { month: month.label })} action={<Button type="primary" className="desktop-add" icon={<Plus size={19}/>} onClick={openAdd}>{settings.addTransactionLabel}</Button>} />
+    <PageHeader title={`${dayPeriodGreeting}، ${profile.name}`} description={interpolateDevText(settings.dashboardDescription, { month: month.label })} action={<Button type="primary" className="desktop-add" icon={<Plus size={19}/>} onClick={openAdd}>{settings.addTransactionLabel}</Button>} />
     <section className="stat-grid has-savings">
       {compactCards.map((card, index) => <StatCard key={card.type} {...card} className={compactCards.length % 2 === 1 && index === compactCards.length - 1 ? 'mobile-wide' : ''}/>)}
       <StatCard label="مانده قابل خرج" value={Math.max(0, spendableAmount - expense)} type="balance" note={`${Math.max(0, Math.round(((spendableAmount - expense) / Math.max(spendableAmount, 1)) * 100))}٪ از مبلغ قابل‌هزینه باقی مانده`} />
