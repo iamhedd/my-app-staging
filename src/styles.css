@@ -547,7 +547,7 @@ body{color:var(--ink)}
   .page-dashboard .top-actions .icon-button{display:grid}
   .page-dashboard .top-actions{flex:0 0 auto}
 
-  .page-transactions .page-header,.page-budgets .page-header{display:none}
+  .page-budgets .page-header{display:none}
   .page-transactions .content,.page-budgets .content{padding-top:16px}
 
   .page-dashboard .stat-grid.has-savings .stat-card.mobile-wide{grid-column:1/-1}

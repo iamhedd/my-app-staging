@@ -729,7 +729,7 @@ function Transactions({ month, categoryOptions, transactions, onDelete, onEdit, 
   const firstDayOfMonth = jalaliToDate(jalaliDateKey(month.year, month.month, 1));
   const dayGridOffset = firstDayOfMonth ? (firstDayOfMonth.getDay() + 1) % 7 : 0;
   const weekdayShorts = ['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'];
-  return <><PageHeader title="تراکنش‌ها" description="همه‌ی ورودی‌ها و خروجی‌های مالی‌ات را یک‌جا مدیریت کن." action={<Button type="primary" className="desktop-add" icon={<Plus size={18}/>} onClick={openAdd}>تراکنش جدید</Button>} />
+  return <><PageHeader title="هرچی دخل و خرج داری، اینجا زیر نظرته" action={<Button type="primary" className="desktop-add" icon={<Plus size={18}/>} onClick={openAdd}>تراکنش جدید</Button>} />
     <Card className="transactions-ant-filters">
       <Input allowClear prefix={<Search size={17}/>} value={query} onChange={event => setQuery(event.target.value)} placeholder="جست‌وجوی تراکنش..."/>
       <Tabs activeKey={mode} onChange={key => setMode(key as 'all' | 'daily')} items={[{key:'all',label:'همه‌چیز'},{key:'daily',label:'روز به روز'}]}/>
