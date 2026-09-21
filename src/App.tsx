@@ -27,7 +27,7 @@ import { isCategoryImage } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
-import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
+import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, type FinancialSetup } from './financialSetup';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
   monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
@@ -151,6 +151,7 @@ export default function App() {
   const [financialSetup, setFinancialSetup] = useStoredState<FinancialSetup | null>(setupStorageKey(activeUserKey), null);
   const [devSettings, setDevSettings] = useStoredState<DevSettings>(devSettingsStorageKey, defaultDevSettings);
   const [editingSetup, setEditingSetup] = useState(false);
+  const [introShownThisSession, setIntroShownThisSession] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
   const [newTransactionDate, setNewTransactionDate] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -413,11 +414,13 @@ export default function App() {
 
   const withTheme = (content: React.ReactNode) => <ConfigProvider theme={{ token: { colorPrimary: devSettings.accentColor || defaultDevSettings.accentColor } }}>{content}</ConfigProvider>;
   const lazyFallback = <div className="lazy-page-fallback"><Spin size="large" tip="در حال آماده‌سازی…"><span /></Spin></div>;
-
-  if (!isDesignReviewRoute && !onboardingComplete && devSettings.showIntroOnboarding) return withTheme(<IntroOnboarding onComplete={() => {
+  const completeProductIntro = () => {
+    setIntroShownThisSession(true);
     setEditingSetup(true);
     setOnboardingComplete(true);
-  }} />);
+  };
+
+  if (!isDesignReviewRoute && !onboardingComplete && devSettings.showIntroOnboarding) return withTheme(<IntroOnboarding onComplete={completeProductIntro} />);
   if (authStatus === 'loading') return <FullPageState title="در حال بررسی حساب" description="نشست امن شما در حال بازیابی است." loading/>;
   if (authStatus === 'error') return <FullPageState title="اتصال حساب انجام نشد" description={authError} actionLabel="تلاش دوباره" onAction={retrySession}/>;
   if (authStatus === 'unauthenticated') return <AuthScreen onAuthenticated={async user => {
@@ -433,6 +436,10 @@ export default function App() {
   if (isDesignReviewRoute) {
     if (!currentUser || databaseRole !== 'admin') return withTheme(<main className="review-access-denied"><Result status="403" title="دسترسی محدود" subTitle="این مسیر فقط برای ادمینی فعال است که نقش او توسط دیتابیس و RLS تأیید شده باشد." extra={<Button type="primary" onClick={() => window.location.assign('/')}>بازگشت به برنامه</Button>}/></main>);
     return withTheme(<Suspense fallback={lazyFallback}><DesignReviewPanel userId={currentUser.id} onExit={() => window.location.assign('/')}/></Suspense>);
+  }
+
+  if (shouldShowNewUserIntro(activeFinancialSetup, introShownThisSession)) {
+    return withTheme(<IntroOnboarding onComplete={completeProductIntro} />);
   }
 
   const completeSetup = async (setup: FinancialSetup) => {

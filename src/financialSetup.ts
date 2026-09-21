@@ -27,6 +27,10 @@ export type FinancialSetup = {
   updatedAt: string;
 };
 
+export function shouldShowNewUserIntro(setup: FinancialSetup | null, introShownThisSession: boolean) {
+  return !setup?.onboardingCompleted && !introShownThisSession;
+}
+
 export const colorPalette = ['#DF7899', '#F2A9C0', '#BE5275', '#FBE4EC', '#707070', '#171717', '#E8E8E8', '#F6F6F6'];
 
 const defaults = [

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addCategory, budgetsFromFinancialSetup, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, createCompletedSetup, createDefaultCategories,
   loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
-  removeCategory, saveFinancialSetup, totalPercentageBps, validateFinancialSetup,
+  removeCategory, saveFinancialSetup, shouldShowNewUserIntro, totalPercentageBps, validateFinancialSetup,
 } from './financialSetup';
 
 function memoryStorage() {
@@ -68,6 +68,17 @@ describe('category management', () => {
 });
 
 describe('persistence and completion', () => {
+  it('shows both the product intro and financial setup for every new user', () => {
+    const completed = createCompletedSetup(20_000_000, 1000, createDefaultCategories(), {
+      enabled: false,
+      time: '21:00',
+      timezone: 'Asia/Tehran',
+    });
+    expect(shouldShowNewUserIntro(null, false)).toBe(true);
+    expect(shouldShowNewUserIntro(null, true)).toBe(false);
+    expect(shouldShowNewUserIntro(completed, false)).toBe(false);
+  });
+
   it('saves setup separately for each user and loads completion state', () => {
     const storage = memoryStorage();
     const setup = createCompletedSetup(20_000_000, 2500, createDefaultCategories(), {
