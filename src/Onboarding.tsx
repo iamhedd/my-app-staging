@@ -215,7 +215,7 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
             <div className="allocation-equivalent">{category.allocationMode === 'amount' ? `معادل ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(category.percentageBps / 100)}٪ از مبلغ قابل‌خرج` : `معادل ${money(category.amount)}`}</div>
           </div>)}</div>
           <div className="add-category"><Input value={newCategory} onChange={event => setNewCategory(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addNewCategory(); } }} placeholder="نام دسته‌ی جدید" aria-label="نام دسته جدید"/><Button type="primary" icon={<Plus size={18}/>} onClick={addNewCategory}>افزودن دسته</Button></div>
-          <div className="palette-note"><Smile size={16}/> برای هر دسته می‌توانی یک ایموجی انتخاب کنی.</div>
+          <div className="palette-note"><Smile size={16}/> برای هر دسته می‌توانی آیکن یا ایموجی انتخاب کنی.</div>
         </section>}
 
         {step === 3 && <section className="onboarding-step review-step">
