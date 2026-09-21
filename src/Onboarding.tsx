@@ -7,7 +7,8 @@ import {
   validateFinancialSetup,
   type ExpenseReminder, type FinancialSetup, type SetupCategory,
 } from './financialSetup';
-import { categoryEmoji, categoryEmojiPalette } from './categoryEmoji';
+import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './categoryEmoji';
+import CategoryIconVisual from './CategoryIconVisual';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -200,9 +201,9 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
                 placement="bottomRight"
                 open={openEmojiPicker === category.id}
                 onOpenChange={open => setOpenEmojiPicker(open ? category.id : null)}
-                content={<div className="category-emoji-palette" role="listbox" aria-label={`انتخاب ایموجی ${category.name}`}>{categoryEmojiPalette(category.name).map(emoji => <button type="button" role="option" aria-selected={categoryEmoji(category.icon, category.name) === emoji} className={categoryEmoji(category.icon, category.name) === emoji ? 'selected' : ''} key={emoji} onClick={() => { updateCategory(category.id, { icon: emoji }); setOpenEmojiPicker(null); }}>{emoji}</button>)}</div>}
+                content={<div className="category-emoji-palette" role="listbox" aria-label={`انتخاب آیکن ${category.name}`}>{categoryEmojiPalette(category.name).map(option => <button type="button" role="option" aria-label={categoryIconLabel(option)} aria-selected={categoryEmoji(category.icon, category.name) === option} className={categoryEmoji(category.icon, category.name) === option ? 'selected' : ''} key={option} onClick={() => { updateCategory(category.id, { icon: option }); setOpenEmojiPicker(null); }}><CategoryIconVisual icon={option}/></button>)}</div>}
               >
-                <Button className="category-emoji-picker" aria-label={`ایموجی دسته ${category.name}`}>{categoryEmoji(category.icon, category.name)}<ChevronDown size={12}/></Button>
+                <Button className="category-emoji-picker" aria-label={`آیکن دسته ${category.name}`}><CategoryIconVisual icon={category.icon} name={category.name}/><ChevronDown size={12}/></Button>
               </Popover>
               <Input className="category-name" value={category.name} onChange={event => updateCategory(category.id, { name: event.target.value })} aria-label="نام دسته"/>
               <Button className="remove-category" type="text" danger icon={<Trash2 size={17}/>} onClick={() => deleteCategory(category.id)} aria-label={`حذف دسته ${category.name}`}/>
@@ -222,7 +223,7 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
           <h1>همه‌چیز آماده است</h1>
           <p>قبل از شروع، خلاصه‌ی برنامه‌ی مالی‌ات را مرور کن.</p>
           <div className="review-income"><span>درآمد ماهانه</span><strong>{money(monthlyIncome)}</strong><small>پس‌انداز {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪: {money(savingsAmount)} · قابل‌هزینه: {money(spendableAmount)}</small></div>
-          <div className="review-list">{calculatedCategories.map(category => <div key={category.id}><i className="review-emoji">{categoryEmoji(category.icon, category.name)}</i><span>{category.name}</span><b>{new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(category.percentageBps / 100)}٪</b><strong>{money(category.amount)}</strong></div>)}</div>
+          <div className="review-list">{calculatedCategories.map(category => <div key={category.id}><i className="review-emoji"><CategoryIconVisual icon={category.icon} name={category.name}/></i><span>{category.name}</span><b>{new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(category.percentageBps / 100)}٪</b><strong>{money(category.amount)}</strong></div>)}</div>
           <div className="review-total"><span>مجموع بودجه</span><strong>{money(calculatedCategories.reduce((sum, category) => sum + category.amount, 0))}</strong></div>
           <div className="reminder-setup">
             <div className="reminder-heading"><div className="step-icon small"><Bell size={19}/></div><div><strong>یادآوری ثبت مخارج</strong><span>هر شب یادت می‌اندازیم مخارج روزانه را ثبت کنی.</span></div><Switch checked={reminder.enabled} onChange={enabled => setReminder(current => ({ ...current, enabled }))}/></div>

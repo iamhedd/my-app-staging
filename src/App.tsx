@@ -23,7 +23,8 @@ import {
   budgetAlertText, collectBudgetAlerts, DEFAULT_NIGHTLY_REMINDER_TEXT,
   shouldSendNightlyReminder, type BudgetAlertLedger,
 } from './notificationRules';
-import { categoryEmoji } from './categoryEmoji';
+import { isCategoryImage } from './categoryEmoji';
+import CategoryIconVisual from './CategoryIconVisual';
 import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, type FinancialSetup } from './financialSetup';
@@ -703,7 +704,7 @@ function TransactionList({ categoryOptions, items, onDelete, onEdit }: { categor
       ...(onEdit ? [<Button key="edit" type="text" aria-label={`ویرایش ${t.title}`} icon={<Pencil size={16}/>} onClick={() => onEdit(t)}/>] : []),
       ...(onDelete ? [<Button key="delete" type="text" danger aria-label={`حذف ${t.title}`} icon={<Trash2 size={16}/>} onClick={() => onDelete(t.id)}/>] : []),
     ]}>
-      <List.Item.Meta avatar={<Avatar className="transaction-ant-avatar" style={{ color: cat.color, background: `${cat.color}18` }} icon={<CategoryIcon category={t.category}/>}/>} title={<span className="transaction-ant-title">{t.title}{(t.recurrence === 'monthly' || t.generatedFrom) && <small className="recurring-badge"><Repeat2 size={11}/> تکرارشونده</small>}</span>} description={`${t.category} · ${displayJalaliDate(t.date)}`}/>
+      <List.Item.Meta avatar={<Avatar className="transaction-ant-avatar" style={{ color: cat.color, background: `${cat.color}18` }} icon={isCategoryImage(cat.icon) ? <CategoryIconVisual icon={cat.icon} name={cat.name}/> : <CategoryIcon category={t.category}/>}/>} title={<span className="transaction-ant-title">{t.title}{(t.recurrence === 'monthly' || t.generatedFrom) && <small className="recurring-badge"><Repeat2 size={11}/> تکرارشونده</small>}</span>} description={`${t.category} · ${displayJalaliDate(t.date)}`}/>
       <div className={`amount ${t.type}`}><strong>{t.type === 'income' ? '+' : '−'} {formatMoney(t.amount)}</strong><span>{t.type === 'income' ? 'واریز' : t.type === 'savings' ? 'پس‌انداز' : 'پرداخت'}</span></div>
     </List.Item>;
   }}/>;
@@ -853,7 +854,7 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
       const cat = categoryOptions.find(category => category.name === name) || { name, color: '#707070', icon: 'other' };
       return <div className={`panel budget-item ${status}`} key={name}>
         <div className="budget-item-head">
-          <div className="category-icon emoji-icon">{categoryEmoji(cat.icon, name)}</div>
+          <div className="category-icon emoji-icon"><CategoryIconVisual icon={cat.icon} name={name}/></div>
           <div className="budget-card-copy">
             <strong title={name}>{name}</strong>
             <small className="budget-month-reference">ماهانه: {monthlyLimit > 0 ? budgetCardMoney(monthlyLimit) : 'بدون سقف'}</small>

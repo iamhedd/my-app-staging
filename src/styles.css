@@ -996,3 +996,11 @@ body{color:var(--ink)}
 @media(max-width:340px){
   .page-budgets .budget-summary-values strong{font-size:13px}
 }
+
+/* Image-based category icons supplied for the financial setup picker. */
+.category-custom-icon{display:block;width:100%;height:100%;object-fit:cover;border-radius:inherit}
+.category-emoji-picker .category-custom-icon{width:26px;height:26px;border-radius:6px}
+.category-emoji-palette{max-height:min(360px,60vh);overflow-y:auto}
+.category-emoji-palette button .category-custom-icon{width:28px;height:28px;border-radius:6px}
+.review-emoji .category-custom-icon,.category-icon.emoji-icon .category-custom-icon{width:100%;height:100%;border-radius:inherit}
+.transaction-ant-avatar .category-custom-icon{width:100%;height:100%;border-radius:50%}
