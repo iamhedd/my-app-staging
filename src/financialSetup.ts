@@ -121,6 +121,12 @@ export function calculateSpendableAmount(monthlyIncome: number, savingsPercentBp
   return monthlyIncome - calculateSavingsAmount(monthlyIncome, savingsPercentBps);
 }
 
+export function validateBudgetAllocationLimit(spendableAmount: number, budgets: Record<string, number>) {
+  const allocatedAmount = Object.values(budgets).reduce((sum, amount) => sum + Math.max(0, amount || 0), 0);
+  if (allocatedAmount <= spendableAmount) return null;
+  return `${(allocatedAmount - spendableAmount).toLocaleString('fa-IR')} تومان بیشتر از مبلغ قابل‌خرج بودجه تعیین شده است.`;
+}
+
 export function validateFinancialSetup(monthlyIncome: number, savingsPercentBps: number, categories: SetupCategory[]) {
   if (!Number.isSafeInteger(monthlyIncome) || monthlyIncome <= 0) return 'درآمد ماهانه باید یک عدد مثبت باشد.';
   if (!Number.isSafeInteger(savingsPercentBps) || savingsPercentBps < 0 || savingsPercentBps > 10000) return 'درصد پس‌انداز باید بین صفر تا صد باشد.';

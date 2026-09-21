@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addCategory, budgetsFromFinancialSetup, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, createCompletedSetup, createDefaultCategories,
   loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
-  removeCategory, saveFinancialSetup, shouldShowNewUserIntro, totalPercentageBps, validateFinancialSetup,
+  removeCategory, saveFinancialSetup, shouldShowNewUserIntro, totalPercentageBps, validateBudgetAllocationLimit, validateFinancialSetup,
 } from './financialSetup';
 
 function memoryStorage() {
@@ -49,6 +49,11 @@ describe('financial setup calculations', () => {
     expect(validateFinancialSetup(10_000_000, 10001, partial)).toContain('بین صفر تا صد');
     expect(calculateSavingsAmount(20_000_000, 2500)).toBe(5_000_000);
     expect(calculateSpendableAmount(20_000_000, 2500)).toBe(15_000_000);
+  });
+
+  it('prevents category budget edits from exceeding the spendable amount', () => {
+    expect(validateBudgetAllocationLimit(10_000_000, { مسکن: 6_000_000, خوراک: 4_000_000 })).toBeNull();
+    expect(validateBudgetAllocationLimit(10_000_000, { مسکن: 7_000_000, خوراک: 4_000_000 })).toContain('۱٬۰۰۰٬۰۰۰ تومان');
   });
 });
 

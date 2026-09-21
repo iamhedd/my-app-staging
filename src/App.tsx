@@ -27,7 +27,7 @@ import { isCategoryImage } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
-import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, type FinancialSetup } from './financialSetup';
+import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, validateBudgetAllocationLimit, type FinancialSetup } from './financialSetup';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
   monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
@@ -77,7 +77,7 @@ const nightlyReminderKey = (userKey: string) => `gav-nightly-reminder-last-v1:${
 
 const formatMoney = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
 const formatThousandsNumber = (value: number) => new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 3 }).format(value / 1_000);
-const budgetCardMoney = (value: number) => formatThousandsNumber(value);
+const budgetCardMoney = (value: number) => new Intl.NumberFormat('fa-IR').format(value);
 function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
     try { return JSON.parse(localStorage.getItem(key) || '') as T; } catch { return fallback; }
@@ -522,7 +522,7 @@ export default function App() {
           {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={totalSavings} openAdd={() => openNewTransaction()} />}
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
-          {page === 'budgets' && <Budgets month={selectedMonth} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
+          {page === 'budgets' && <Budgets month={selectedMonth} plan={activeFinancialSetup} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
           {page === 'settings' && <SettingsPage userId={currentUser.id} cloudEnabled financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
           {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={async () => {
             try {
@@ -795,7 +795,7 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
   </div>;
 }
 
-function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, notify }: { month: JalaliMonth; categoryOptions: Category[]; transactions: Transaction[]; budgets: BudgetMap; setBudgets: (b: BudgetMap) => void | Promise<void>; notify: (s: string) => void }) {
+function Budgets({ month, plan, categoryOptions, transactions, budgets, setBudgets, notify }: { month: JalaliMonth; plan: FinancialSetup; categoryOptions: Category[]; transactions: Transaction[]; budgets: BudgetMap; setBudgets: (b: BudgetMap) => void | Promise<void>; notify: (s: string) => void }) {
   const monthWeeks = weeksOfJalaliMonth(month);
   const [selectedWeekIndex, setSelectedWeekIndex] = useState(() => Math.max(0, monthWeeks.findIndex(week => week.isCurrent)));
   const [editing, setEditing] = useState<string | null>(null);
@@ -817,19 +817,29 @@ function Budgets({ month, categoryOptions, transactions, budgets, setBudgets, no
     const parsed = parseJalaliDate(transaction.date);
     return Boolean(parsed && parsed.year === month.year && parsed.month === month.month && parsed.day >= week.startDay && parsed.day <= week.endDay);
   }).reduce((sum, transaction) => sum + transaction.amount, 0);
-  const totalBudget = budgetEntries.reduce((sum, [, limit]) => sum + limit, 0);
-  const totalSpent = budgetEntries.reduce((sum, [name]) => sum + monthlyExpenseFor(name), 0);
+  const totalBudget = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
+  const monthExpenses = transactions.filter(transaction => transaction.type === 'expense' && isInJalaliMonth(transaction.date, month));
+  const totalSpent = monthExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
   const totalRemaining = totalBudget - totalSpent;
   const totalProgress = totalBudget > 0 ? Math.round(totalSpent / totalBudget * 100) : 0;
-  const selectedWeekLimit = budgetEntries.reduce((sum, [name]) => sum + weekLimitFor(name), 0);
-  const selectedWeekSpent = budgetEntries.reduce((sum, [name]) => sum + weeklyExpenseFor(name), 0);
+  const selectedWeekLimit = allocateMonthlyAmountByWeek(totalBudget, monthWeeks)[activeWeekIndex] || 0;
+  const selectedWeekSpent = monthExpenses.filter(transaction => {
+    const parsed = parseJalaliDate(transaction.date);
+    return Boolean(parsed && parsed.day >= selectedWeek.startDay && parsed.day <= selectedWeek.endDay);
+  }).reduce((sum, transaction) => sum + transaction.amount, 0);
   const selectedWeekRemaining = selectedWeekLimit - selectedWeekSpent;
   const save = async () => {
     if (!editing || amount === '' || Number(amount) < 0) return;
+    const nextBudgets = { ...budgets, [editing]: Number(amount) };
+    const allocationError = validateBudgetAllocationLimit(totalBudget, nextBudgets);
+    if (allocationError) {
+      setBudgetError(allocationError);
+      return;
+    }
     setSavingBudget(true);
     setBudgetError('');
     try {
-      await setBudgets({ ...budgets, [editing]: Number(amount) });
+      await setBudgets(nextBudgets);
       setEditing(null);
       notify('بودجه ماهانه و سقف‌های هفتگی به‌روزرسانی شدند');
     } catch (error) { setBudgetError(error instanceof Error ? error.message : 'ذخیره بودجه انجام نشد. دوباره تلاش کن.'); }
