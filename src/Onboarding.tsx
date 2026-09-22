@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Input, Popover, Progress, Segmented, Slider, Switch } from 'antd';
+import { Alert, Button, Card, Input, Popover, Progress, Segmented, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -23,7 +23,7 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
   const [monthlyIncome, setMonthlyIncome] = useState(initialSetup?.monthlyIncome ?? 0);
   const [incomeInput, setIncomeInput] = useState(initialSetup?.monthlyIncome ? String(initialSetup.monthlyIncome) : '');
   const [savingsPercentBps, setSavingsPercentBps] = useState(initialSetup?.savingsPercentBps ?? 0);
-  const [savingsPercentInput, setSavingsPercentInput] = useState(String((initialSetup?.savingsPercentBps ?? 0) / 100));
+  const [savingsAmountInput, setSavingsAmountInput] = useState(initialSetup ? String(calculateSavingsAmount(initialSetup.monthlyIncome, initialSetup.savingsPercentBps, initialSetup.savingsTargetAmount)) : '');
   const [categories, setCategories] = useState<SetupCategory[]>(initialSetup?.categories ?? createDefaultCategories());
   const [allocationInputs, setAllocationInputs] = useState<Record<string, string>>(() => Object.fromEntries((initialSetup?.categories ?? createDefaultCategories()).map(category => [category.id, category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100)])));
   const [newCategory, setNewCategory] = useState('');
@@ -36,9 +36,11 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
     time: '21:00',
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Tehran',
   });
+  const [savingsEnabled, setSavingsEnabled] = useState(savingsPercentBps > 0);
 
-  const savingsAmount = calculateSavingsAmount(monthlyIncome, savingsPercentBps);
-  const spendableAmount = calculateSpendableAmount(monthlyIncome, savingsPercentBps);
+  const enteredSavingsAmount = parseNonNegativeInteger(savingsAmountInput);
+  const savingsAmount = savingsEnabled && enteredSavingsAmount !== null ? enteredSavingsAmount : 0;
+  const spendableAmount = calculateSpendableAmount(monthlyIncome, savingsPercentBps, savingsAmount);
   const calculatedCategories = useMemo(() => calculateCategoryAmounts(spendableAmount, categories), [spendableAmount, categories]);
   const allocatedAmount = calculatedCategories.reduce((sum, category) => sum + category.amount, 0);
   const totalBps = spendableAmount > 0 ? Math.round(allocatedAmount / spendableAmount * 10000) : 0;
@@ -49,28 +51,29 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
     setIncomeInput(value);
     const parsed = parsePositiveInteger(value);
     setMonthlyIncome(parsed ?? 0);
+    const saving = parseNonNegativeInteger(savingsAmountInput);
+    if (parsed && saving !== null && saving <= parsed) setSavingsPercentBps(Math.round(saving / parsed * 10000));
     if (parsed) setError('');
   };
 
-  const changeSavingsPercent = (value: string) => {
-    setSavingsPercentInput(value);
-    const parsed = percentageToBps(value);
-    if (parsed !== null) setSavingsPercentBps(parsed);
+  const changeSavingsAmount = (value: string) => {
+    setSavingsAmountInput(value);
+    const parsed = parseNonNegativeInteger(value);
+    if (parsed !== null && monthlyIncome > 0 && parsed <= monthlyIncome) setSavingsPercentBps(Math.round(parsed / monthlyIncome * 10000));
     setError('');
   };
 
-  const [savingsEnabled, setSavingsEnabled] = useState(savingsPercentBps > 0);
-  const lastSavingsPercentRef = useRef(savingsPercentBps > 0 ? savingsPercentBps : 1000);
+  const lastSavingsAmountRef = useRef(savingsAmount || Math.round(monthlyIncome * 0.1));
   const toggleSavings = (enabled: boolean) => {
     setSavingsEnabled(enabled);
     if (enabled) {
-      const restored = lastSavingsPercentRef.current || 1000;
-      setSavingsPercentBps(restored);
-      setSavingsPercentInput(String(restored / 100));
+      const restored = lastSavingsAmountRef.current || Math.round(monthlyIncome * 0.1);
+      setSavingsAmountInput(String(restored));
+      setSavingsPercentBps(monthlyIncome > 0 ? Math.round(restored / monthlyIncome * 10000) : 0);
     } else {
-      if (savingsPercentBps > 0) lastSavingsPercentRef.current = savingsPercentBps;
+      if (savingsAmount > 0) lastSavingsAmountRef.current = savingsAmount;
       setSavingsPercentBps(0);
-      setSavingsPercentInput('0');
+      setSavingsAmountInput('0');
     }
     setError('');
   };
@@ -122,11 +125,13 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
   const nextStep = () => {
     if (step === 1) {
       if (!monthlyIncome) return setError('درآمد ماهانه باید یک عدد مثبت باشد.');
+      const enteredSavings = parseNonNegativeInteger(savingsAmountInput);
+      if (savingsEnabled && (enteredSavings === null || enteredSavings > monthlyIncome)) return setError('مبلغ پس‌انداز باید بین صفر و درآمد ماهانه باشد.');
       setError('');
       return setStep(2);
     }
     if (step === 2) {
-      const validation = validateFinancialSetup(monthlyIncome, savingsPercentBps, categories);
+      const validation = validateFinancialSetup(monthlyIncome, savingsPercentBps, categories, savingsAmount);
       if (validation) return setError(validation);
       setError('');
       return setStep(3);
@@ -141,14 +146,14 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
   };
 
   const complete = async () => {
-    const validation = validateFinancialSetup(monthlyIncome, savingsPercentBps, categories);
+    const validation = validateFinancialSetup(monthlyIncome, savingsPercentBps, categories, savingsAmount);
     if (validation) {
       setError(validation);
       setStep(2);
       return;
     }
     setSaving(true);
-    const setup = createCompletedSetup(monthlyIncome, savingsPercentBps, categories, reminder);
+    const setup = createCompletedSetup(monthlyIncome, savingsPercentBps, categories, reminder, savingsAmount);
     try {
       await onComplete(setup);
     } catch (saveError) {
@@ -174,9 +179,9 @@ export default function Onboarding({ initialSetup, onComplete, onCancel }: Props
           <div id="income-hint" className="income-preview">{incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${money(parsePositiveInteger(incomeInput)!)} در ماه` : 'درآمد ماهانه‌ات را به تومان وارد کن.'}</div>
           <div className="savings-toggle-row"><span>می‌خوای بخشی از درآمدت رو پس‌انداز کنی؟</span><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
           {savingsEnabled ? <>
-            <label className="income-label" htmlFor="savings-percent">درصد هدف پس‌انداز</label>
-            <div className="savings-percent-control"><Input id="savings-percent" inputMode="decimal" value={savingsPercentInput} onChange={event => changeSavingsPercent(event.target.value)} onBlur={() => setSavingsPercentInput(String(savingsPercentBps / 100))} aria-describedby="savings-hint" suffix="٪"/><Slider className="savings-slider" min={0} max={100} step={1} value={savingsPercentBps / 100} onChange={value => { setSavingsPercentBps(value * 100); setSavingsPercentInput(String(value)); }}/></div>
-            <div id="savings-hint" className="income-preview">درصدی بین صفر تا صد؛ مبلغ پس‌انداز خودکار محاسبه می‌شود.</div>
+            <label className="income-label" htmlFor="savings-amount">این ماه چقدر می‌خوای پس‌انداز کنی؟</label>
+            <Input className="income-input" id="savings-amount" inputMode="numeric" value={savingsAmountInput} onChange={event => changeSavingsAmount(event.target.value)} aria-describedby="savings-hint" suffix="تومان"/>
+            <div id="savings-hint" className="income-preview">معادل {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪ از درآمد ماهانه</div>
           </> : <div className="income-preview">فعلاً بدون پس‌انداز ادامه می‌دی؛ هر وقت خواستی می‌تونی از تنظیمات دوباره فعالش کنی.</div>}
           <div className="income-split"><div><span>برای پس‌انداز · {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪</span><strong>{money(savingsAmount)}</strong></div><div><span>قابل‌هزینه</span><strong>{money(spendableAmount)}</strong></div></div>
         </section>}

@@ -6,6 +6,7 @@ import {
   migrationRunInputSchema,
   moneySchema,
   reviewCommentInputSchema,
+  savingsPortfolioInputSchema,
   transactionInputSchema,
 } from './schemas.js';
 
@@ -51,6 +52,22 @@ test('budgets reject duplicate compound keys', () => {
     ],
   });
   assert.equal(result.success, false);
+});
+
+test('savings goals are allocations and cannot exceed the real balance', () => {
+  const valid = savingsPortfolioInputSchema.safeParse({
+    totalAmount: '20000000', monthKey: '1405/07', monthlyTargetAmount: '20000000',
+    goals: [
+      { id: 'travel', name: 'سفر', allocatedAmount: '5000000', targetAmount: '15000000', targetDate: null, completed: false },
+      { id: 'laptop', name: 'لپ‌تاپ', allocatedAmount: '4000000', targetAmount: null, targetDate: '2027-03-20', completed: false },
+    ],
+  });
+  assert.equal(valid.success, true);
+  const overAllocated = savingsPortfolioInputSchema.safeParse({
+    totalAmount: '10000000', monthKey: '1405/07', monthlyTargetAmount: '10000000',
+    goals: [{ id: 'home', name: 'خانه', allocatedAmount: '11000000', targetAmount: null, targetDate: null, completed: false }],
+  });
+  assert.equal(overAllocated.success, false);
 });
 
 test('review comments use bounded priority and status values', () => {

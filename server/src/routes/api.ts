@@ -14,6 +14,7 @@ import {
   reviewCommentIdParamSchema,
   reviewCommentInputSchema,
   reviewCommentUpdateSchema,
+  savingsPortfolioInputSchema,
   settingsInputSchema,
   transactionInputSchema,
 } from '../data/schemas.js';
@@ -31,6 +32,7 @@ import {
   saveNotificationDevice,
   saveProfile,
   saveSettings,
+  saveSavingsPortfolio,
   saveTransaction,
   saveMigrationRun,
   updateReviewComment,
@@ -99,6 +101,11 @@ apiRouter.delete('/transactions/:legacyId', asyncHandler(async (request, respons
 apiRouter.put('/budgets', asyncHandler(async (request, response) => {
   const input = budgetsInputSchema.parse(request.body);
   response.json({ budgets: await replaceBudgets(currentUserId(request), input.budgets) });
+}));
+
+apiRouter.put('/savings', asyncHandler(async (request, response) => {
+  const input = savingsPortfolioInputSchema.parse(request.body);
+  response.json({ savingsPortfolio: await saveSavingsPortfolio(currentUserId(request), input) });
 }));
 
 apiRouter.put('/settings', asyncHandler(async (request, response) => {

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { loadCloudUserData, resolveProfileName, saveCloudProfile, saveCloudTransaction } from './database';
+import { loadCloudUserData, resolveProfileName, saveCloudProfile, saveCloudSavingsPortfolio, saveCloudTransaction } from './database';
 
 function jsonResponse(value: unknown, status = 200) {
   return new Response(JSON.stringify(value), { status, headers: { 'content-type': 'application/json' } });
@@ -39,6 +39,23 @@ describe('API persistence contracts', () => {
     const [url, request] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/v1/profile');
     expect(JSON.parse(String(request?.body))).toEqual({ name: 'کاربر ب', avatarUrl: '/b.png' });
+  });
+
+  it('persists savings as one balance plus internal goal allocations', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ savingsPortfolio: {} }));
+    await saveCloudSavingsPortfolio('user-a', {
+      totalAmount: 20_000_000,
+      monthKey: '1405/07',
+      monthlyTargetAmount: 20_000_000,
+      goals: [{ id: 'travel', name: 'سفر', allocatedAmount: 5_000_000, targetAmount: 15_000_000, targetDate: '1406/01/31', completed: false }],
+      updatedAt: '2026-09-22T00:00:00.000Z',
+    });
+    const [url, request] = fetchMock.mock.calls[0];
+    expect(url).toBe('/api/v1/savings');
+    expect(JSON.parse(String(request?.body))).toMatchObject({
+      totalAmount: '20000000',
+      goals: [{ allocatedAmount: '5000000', targetAmount: '15000000', targetDate: '2027-04-20' }],
+    });
   });
 
   it('hydrates API bigint strings and ISO dates into the existing frontend model', async () => {

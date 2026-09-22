@@ -12,6 +12,7 @@ type ReviewTarget = { key: string; title: string; description: string; component
 const targets: ReviewTarget[] = [
   { key: 'dashboard', title: 'داشبورد', description: 'کارت‌های خلاصه، نمودارها و تراکنش‌های اخیر', components: ['هدر', 'کارت‌های خلاصه', 'نمودار روند', 'نمودار دسته‌ها', 'تراکنش‌های اخیر'] },
   { key: 'budgets', title: 'بودجه‌بندی', description: 'بودجه ماهانه، هفتگی و کارت دسته‌ها', components: ['انتخاب بازه', 'کارت بودجه کل', 'کارت دسته‌بندی', 'Modal ویرایش'] },
+  { key: 'savings', title: 'پس‌انداز', description: 'موجودی واقعی، مبلغ بدون هدف و هدف‌های پس‌انداز', components: ['خلاصه پس‌انداز', 'هدف ماهانه', 'کارت هدف', 'افزایش و برداشت', 'جابه‌جایی بین هدف‌ها'] },
   { key: 'transactions', title: 'تراکنش‌ها', description: 'جست‌وجو، فیلترها و فهرست تراکنش‌ها', components: ['جست‌وجو', 'فیلترها', 'فهرست تراکنش‌ها', 'Modal ثبت تراکنش'] },
   { key: 'reports', title: 'گزارش‌ها', description: 'مقایسه ماهانه، پیش‌بینی و دسته‌های پرخرج', components: ['خلاصه گزارش', 'نمودار مقایسه', 'دسته‌های پرخرج', 'کارت پیش‌بینی'] },
   { key: 'calendar', title: 'تقویم هزینه‌ها', description: 'تقویم شمسی ماهانه و هزینه روزانه', components: ['انتخاب ماه', 'شبکه تقویم', 'روز انتخاب‌شده', 'فهرست هزینه روز'] },
@@ -33,6 +34,7 @@ const statusLabel = Object.fromEntries(statusOptions.map(item => [item.value, it
 function PreviewMock({ pageKey }: { pageKey: string }) {
   if (pageKey === 'dashboard') return <><div className="review-mock-header"/><div className="review-mock-stats">{[1,2,3,4].map(item => <i key={item}/>)}</div><div className="review-mock-chart"><i/><i/><i/><i/><i/></div></>;
   if (pageKey === 'budgets') return <><div className="review-mock-tabs"/><div className="review-mock-hero"/><div className="review-mock-squares">{[1,2,3,4].map(item => <i key={item}/>)}</div></>;
+  if (pageKey === 'savings') return <><div className="review-mock-hero"/><div className="review-mock-tabs"/><div className="review-mock-squares">{[1,2,3].map(item => <i key={item}/>)}</div></>;
   if (pageKey === 'transactions') return <><div className="review-mock-search"/><div className="review-mock-tabs"/><div className="review-mock-list">{[1,2,3,4].map(item => <i key={item}/>)}</div></>;
   if (pageKey === 'reports') return <><div className="review-mock-stats">{[1,2,3].map(item => <i key={item}/>)}</div><div className="review-mock-chart"><i/><i/><i/><i/></div><div className="review-mock-list"><i/><i/></div></>;
   if (pageKey === 'calendar') return <><div className="review-mock-tabs"/><div className="review-mock-calendar">{Array.from({length:35},(_,index)=><i key={index}/>)}</div><div className="review-mock-list"><i/><i/></div></>;

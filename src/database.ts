@@ -4,6 +4,7 @@ import { isoDateToJalali, jalaliToIsoDate } from './dateUtils';
 import { normalizeDevSettings, type DevSettings } from './devSettings';
 import type { FinancialSetup, SetupCategory } from './financialSetup';
 import type { Transaction, TxType } from './transactions';
+import type { SavingsPortfolio } from './savings';
 
 export type CloudProfile = { name: string; email: string; avatarUrl: string };
 export type BudgetMap = Record<string, number>;
@@ -31,6 +32,7 @@ export type CloudUserData = {
   weeklyBudgets: WeeklyBudgetStore;
   financialSetup: FinancialSetup | null;
   appSettings: DevSettings | null;
+  savingsPortfolio: SavingsPortfolio | null;
 };
 
 type ApiProfile = { name?: string | null; email?: string | null; avatarUrl?: string | null };
@@ -51,9 +53,24 @@ type ApiBudget = {
 type ApiFinancialPlan = {
   monthlyIncome: string | number;
   savingsPercentBps: number;
+  savingsTargetAmount?: string | number;
   currency: 'TOMAN';
   onboardingCompleted: boolean;
   reminder: FinancialSetup['reminder'];
+  updatedAt?: string;
+};
+type ApiSavingsPortfolio = {
+  totalAmount: string | number;
+  monthKey: string;
+  monthlyTargetAmount: string | number;
+  goals: Array<{
+    id: string;
+    name: string;
+    allocatedAmount: string | number;
+    targetAmount: string | number | null;
+    targetDate: string | null;
+    completed: boolean;
+  }>;
   updatedAt?: string;
 };
 type BootstrapResponse = {
@@ -64,6 +81,7 @@ type BootstrapResponse = {
   financialPlan?: ApiFinancialPlan | null;
   budgets?: ApiBudget[];
   settings?: { settings?: unknown } | null;
+  savingsPortfolio?: ApiSavingsPortfolio | null;
 };
 
 function moneyNumber(value: string | number, field: string) {
@@ -114,6 +132,9 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
     version: 4,
     monthlyIncome: moneyNumber(plan.monthlyIncome, 'درآمد ماهانه'),
     savingsPercentBps: plan.savingsPercentBps,
+    savingsTargetAmount: plan.savingsTargetAmount === undefined
+      ? undefined
+      : moneyNumber(plan.savingsTargetAmount, 'هدف پس‌انداز'),
     currency: plan.currency,
     categories,
     onboardingCompleted: plan.onboardingCompleted,
@@ -131,6 +152,21 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
     }
   }
   const apiProfile = data.profile;
+  const apiSavings = data.savingsPortfolio;
+  const savingsPortfolio: SavingsPortfolio | null = apiSavings ? {
+    totalAmount: moneyNumber(apiSavings.totalAmount, 'کل پس‌انداز'),
+    monthKey: apiSavings.monthKey,
+    monthlyTargetAmount: moneyNumber(apiSavings.monthlyTargetAmount, 'هدف پس‌انداز ماهانه'),
+    goals: apiSavings.goals.map(goal => ({
+      id: goal.id,
+      name: goal.name,
+      allocatedAmount: moneyNumber(goal.allocatedAmount, `تخصیص ${goal.name}`),
+      targetAmount: goal.targetAmount === null ? null : moneyNumber(goal.targetAmount, `هدف ${goal.name}`),
+      targetDate: goal.targetDate ? (isoDateToJalali(goal.targetDate) || null) : null,
+      completed: goal.completed,
+    })),
+    updatedAt: apiSavings.updatedAt || new Date().toISOString(),
+  } : null;
   const resolvedProfileName = resolveProfileName(apiProfile?.name, user);
   return {
     profile: {
@@ -147,6 +183,7 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
     appSettings: data.settings?.settings && typeof data.settings.settings === 'object'
       ? normalizeDevSettings(data.settings.settings as Partial<DevSettings>)
       : null,
+    savingsPortfolio,
   };
 }
 
@@ -184,6 +221,7 @@ export async function saveCloudFinancialSetup(_userId: string, setup: FinancialS
     body: jsonBody({
       monthlyIncome: moneyString(setup.monthlyIncome, 'درآمد ماهانه', true),
       savingsPercentBps: setup.savingsPercentBps,
+      savingsTargetAmount: moneyString(calculateSetupSavingsTarget(setup), 'هدف پس‌انداز'),
       currency: setup.currency,
       onboardingCompleted: setup.onboardingCompleted,
       reminder: setup.reminder,
@@ -196,6 +234,11 @@ export async function saveCloudFinancialSetup(_userId: string, setup: FinancialS
       amount: moneyString(category.amount, `بودجه ${category.name}`),
     })) }),
   });
+}
+
+function calculateSetupSavingsTarget(setup: FinancialSetup) {
+  if (Number.isSafeInteger(setup.savingsTargetAmount) && setup.savingsTargetAmount! >= 0 && setup.savingsTargetAmount! <= setup.monthlyIncome) return setup.savingsTargetAmount!;
+  return Math.round(setup.monthlyIncome * setup.savingsPercentBps / 10000);
 }
 
 export async function saveCloudBudgets(_userId: string, budgets: BudgetMap, weeklyBudgets: WeeklyBudgetStore) {
@@ -216,6 +259,25 @@ export async function saveCloudBudgets(_userId: string, budgets: BudgetMap, week
     }))),
   ];
   await apiRequest('/api/v1/budgets', { method: 'PUT', body: jsonBody({ budgets: rows }) });
+}
+
+export async function saveCloudSavingsPortfolio(_userId: string, portfolio: SavingsPortfolio) {
+  await apiRequest('/api/v1/savings', {
+    method: 'PUT',
+    body: jsonBody({
+      totalAmount: moneyString(portfolio.totalAmount, 'کل پس‌انداز'),
+      monthKey: portfolio.monthKey,
+      monthlyTargetAmount: moneyString(portfolio.monthlyTargetAmount, 'هدف پس‌انداز ماهانه'),
+      goals: portfolio.goals.map(goal => ({
+        id: goal.id,
+        name: goal.name.trim(),
+        allocatedAmount: moneyString(goal.allocatedAmount, `تخصیص ${goal.name}`),
+        targetAmount: goal.targetAmount === null ? null : moneyString(goal.targetAmount, `هدف ${goal.name}`, true),
+        targetDate: goal.targetDate ? jalaliToIsoDate(goal.targetDate) : null,
+        completed: goal.completed,
+      })),
+    }),
+  });
 }
 
 export async function saveCloudAppSettings(_userId: string, settings: DevSettings) {

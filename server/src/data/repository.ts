@@ -11,6 +11,7 @@ import type {
   ProfileInput,
   ReviewCommentInput,
   ReviewCommentUpdateInput,
+  SavingsPortfolioInput,
   SettingsInput,
   TransactionInput,
 } from './schemas.js';
@@ -34,6 +35,7 @@ function mapPlan(row: DatabaseRow | undefined) {
   return {
     monthlyIncome: String(row.monthly_income),
     savingsPercentBps: Number(row.savings_percent_bps),
+    savingsTargetAmount: String(row.savings_target_amount),
     currency: String(row.currency),
     onboardingCompleted: Boolean(row.onboarding_completed),
     reminder: {
@@ -79,6 +81,24 @@ function mapBudget(row: DatabaseRow) {
     periodKey: String(row.period_key),
     limitAmount: String(row.limit_amount),
     isOverride: Boolean(row.is_override),
+  };
+}
+
+function mapSavingsPortfolio(account: DatabaseRow | undefined, goals: DatabaseRow[]) {
+  if (!account) return null;
+  return {
+    totalAmount: String(account.total_amount),
+    monthKey: String(account.target_month_key),
+    monthlyTargetAmount: String(account.monthly_target_amount),
+    goals: goals.map(row => ({
+      id: String(row.client_id),
+      name: String(row.name),
+      allocatedAmount: String(row.allocated_amount),
+      targetAmount: row.target_amount == null ? null : String(row.target_amount),
+      targetDate: row.target_date == null ? null : String(row.target_date),
+      completed: Boolean(row.completed),
+    })),
+    updatedAt: account.updated_at,
   };
 }
 
@@ -134,6 +154,8 @@ export async function getBootstrap(userId: string) {
     const transactions = await client.query('select * from transactions where user_id = $1 order by transaction_date desc, created_at desc', [userId]);
     const budgets = await client.query('select * from budgets where user_id = $1 order by period_type, period_key, category_name', [userId]);
     const settings = await client.query('select locale, theme, timezone, settings from user_settings where user_id = $1', [userId]);
+    const savingsAccount = await client.query('select * from savings_accounts where user_id = $1', [userId]);
+    const savingsGoals = await client.query('select * from savings_goals where user_id = $1 order by sort_order, created_at', [userId]);
 
     return {
       profile: mapProfile(profile.rows[0]),
@@ -143,6 +165,7 @@ export async function getBootstrap(userId: string) {
       transactions: transactions.rows.map(mapTransaction),
       budgets: budgets.rows.map(mapBudget),
       settings: settings.rows[0] ?? null,
+      savingsPortfolio: mapSavingsPortfolio(savingsAccount.rows[0], savingsGoals.rows),
     };
   });
 }
@@ -164,11 +187,12 @@ export async function saveFinancialPlan(userId: string, input: FinancialPlanInpu
   return withUserContext(userId, async client => {
     const result = await client.query(
       `insert into financial_plans
-       (user_id, monthly_income, savings_percent_bps, currency, onboarding_completed, reminder_enabled, reminder_time, timezone)
-       values ($1, $2, $3, $4, $5, $6, $7, $8)
+       (user_id, monthly_income, savings_percent_bps, savings_target_amount, currency, onboarding_completed, reminder_enabled, reminder_time, timezone)
+       values ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        on conflict (user_id) do update set
          monthly_income = excluded.monthly_income,
          savings_percent_bps = excluded.savings_percent_bps,
+         savings_target_amount = excluded.savings_target_amount,
          currency = excluded.currency,
          onboarding_completed = excluded.onboarding_completed,
          reminder_enabled = excluded.reminder_enabled,
@@ -179,6 +203,7 @@ export async function saveFinancialPlan(userId: string, input: FinancialPlanInpu
         userId,
         input.monthlyIncome,
         input.savingsPercentBps,
+        input.savingsTargetAmount ?? (BigInt(input.monthlyIncome) * BigInt(input.savingsPercentBps) / 10_000n).toString(),
         input.currency,
         input.onboardingCompleted,
         input.reminder.enabled,
@@ -193,14 +218,14 @@ export async function saveFinancialPlan(userId: string, input: FinancialPlanInpu
 export async function replaceCategories(userId: string, categories: CategoryInput[]) {
   return withUserContext(userId, async client => {
     const plan = await client.query(
-      'select monthly_income, savings_percent_bps from financial_plans where user_id = $1 for update',
+      'select monthly_income, savings_percent_bps, savings_target_amount from financial_plans where user_id = $1 for update',
       [userId],
     );
     if (!plan.rows[0]) throw new HttpError(409, 'FINANCIAL_PLAN_REQUIRED', 'ابتدا برنامه مالی را ثبت کنید.');
 
     const income = BigInt(plan.rows[0].monthly_income);
-    const savingsBps = BigInt(plan.rows[0].savings_percent_bps);
-    const spendable = income * (10_000n - savingsBps) / 10_000n;
+    const savingsTarget = BigInt(plan.rows[0].savings_target_amount);
+    const spendable = income - savingsTarget;
     const totalAmount = categories.reduce((sum, category) => sum + BigInt(category.amount), 0n);
     const totalPercentageBps = categories.reduce((sum, category) => sum + category.percentageBps, 0);
     if (totalAmount > spendable || totalPercentageBps > 10_000) {
@@ -286,6 +311,33 @@ export async function replaceBudgets(userId: string, budgets: BudgetInput[]) {
       );
     }
     return budgets;
+  });
+}
+
+export async function saveSavingsPortfolio(userId: string, input: SavingsPortfolioInput) {
+  return withUserContext(userId, async client => {
+    const account = await client.query(
+      `insert into savings_accounts
+       (user_id, total_amount, target_month_key, monthly_target_amount)
+       values ($1, $2, $3, $4)
+       on conflict (user_id) do update set
+         total_amount = excluded.total_amount,
+         target_month_key = excluded.target_month_key,
+         monthly_target_amount = excluded.monthly_target_amount
+       returning *`,
+      [userId, input.totalAmount, input.monthKey, input.monthlyTargetAmount],
+    );
+    await client.query('delete from savings_goals where user_id = $1', [userId]);
+    for (const [index, goal] of input.goals.entries()) {
+      await client.query(
+        `insert into savings_goals
+         (user_id, client_id, name, allocated_amount, target_amount, target_date, completed, sort_order)
+         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
+        [userId, goal.id, goal.name, goal.allocatedAmount, goal.targetAmount, goal.targetDate, goal.completed, index],
+      );
+    }
+    const goals = await client.query('select * from savings_goals where user_id = $1 order by sort_order, created_at', [userId]);
+    return mapSavingsPortfolio(account.rows[0], goals.rows);
   });
 }
 

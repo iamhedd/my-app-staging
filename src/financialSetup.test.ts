@@ -49,6 +49,8 @@ describe('financial setup calculations', () => {
     expect(validateFinancialSetup(10_000_000, 10001, partial)).toContain('بین صفر تا صد');
     expect(calculateSavingsAmount(20_000_000, 2500)).toBe(5_000_000);
     expect(calculateSpendableAmount(20_000_000, 2500)).toBe(15_000_000);
+    expect(calculateSavingsAmount(45_000_000, 4444, 20_000_000)).toBe(20_000_000);
+    expect(calculateSpendableAmount(45_000_000, 4444, 20_000_000)).toBe(25_000_000);
   });
 
   it('prevents category budget edits from exceeding the spendable amount', () => {

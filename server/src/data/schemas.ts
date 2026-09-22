@@ -33,6 +33,7 @@ export const profileInputSchema = z.object({
 export const financialPlanInputSchema = z.object({
   monthlyIncome: positiveMoneySchema,
   savingsPercentBps: z.number().int().min(0).max(10_000),
+  savingsTargetAmount: moneySchema.optional(),
   currency: z.literal('TOMAN').default('TOMAN'),
   onboardingCompleted: z.boolean(),
   reminder: z.object({
@@ -40,7 +41,11 @@ export const financialPlanInputSchema = z.object({
     time: z.string().regex(/^(?:[01]\d|2[0-3]):[0-5]\d$/),
     timezone: z.string().trim().min(1).max(100),
   }).strict(),
-}).strict();
+}).strict().superRefine((plan, context) => {
+  if (plan.savingsTargetAmount !== undefined && BigInt(plan.savingsTargetAmount) > BigInt(plan.monthlyIncome)) {
+    context.addIssue({ code: 'custom', path: ['savingsTargetAmount'], message: 'مبلغ پس‌انداز نمی‌تواند از درآمد بیشتر باشد.' });
+  }
+});
 
 export const categoryInputSchema = z.object({
   id: clientIdSchema,
@@ -75,6 +80,37 @@ export const transactionInputSchema = z.object({
   recurrence: z.enum(['none', 'monthly']).default('none'),
   generatedFrom: clientIdSchema.nullable().default(null),
 }).strict();
+
+export const savingsGoalInputSchema = z.object({
+  id: clientIdSchema,
+  name: z.string().trim().min(1).max(120),
+  allocatedAmount: moneySchema,
+  targetAmount: positiveMoneySchema.nullable(),
+  targetDate: z.iso.date().nullable(),
+  completed: z.boolean(),
+}).strict();
+
+export const savingsPortfolioInputSchema = z.object({
+  totalAmount: moneySchema,
+  monthKey: z.string().regex(/^\d{4}\/\d{2}$/),
+  monthlyTargetAmount: moneySchema,
+  goals: z.array(savingsGoalInputSchema).max(100),
+}).strict().superRefine((portfolio, context) => {
+  const ids = new Set<string>();
+  const names = new Set<string>();
+  let allocated = 0n;
+  portfolio.goals.forEach((goal, index) => {
+    const normalizedName = goal.name.toLocaleLowerCase('fa');
+    if (ids.has(goal.id)) context.addIssue({ code: 'custom', path: ['goals', index, 'id'], message: 'شناسه هدف تکراری است.' });
+    if (names.has(normalizedName)) context.addIssue({ code: 'custom', path: ['goals', index, 'name'], message: 'نام هدف تکراری است.' });
+    ids.add(goal.id);
+    names.add(normalizedName);
+    allocated += BigInt(goal.allocatedAmount);
+  });
+  if (allocated > BigInt(portfolio.totalAmount)) {
+    context.addIssue({ code: 'custom', path: ['goals'], message: 'مجموع تخصیص هدف‌ها از کل پس‌انداز بیشتر است.' });
+  }
+});
 
 export const budgetInputSchema = z.object({
   category: z.string().trim().min(1).max(80),
@@ -145,6 +181,7 @@ export type ProfileInput = z.infer<typeof profileInputSchema>;
 export type FinancialPlanInput = z.infer<typeof financialPlanInputSchema>;
 export type CategoryInput = z.infer<typeof categoryInputSchema>;
 export type TransactionInput = z.infer<typeof transactionInputSchema>;
+export type SavingsPortfolioInput = z.infer<typeof savingsPortfolioInputSchema>;
 export type BudgetInput = z.infer<typeof budgetInputSchema>;
 export type SettingsInput = z.infer<typeof settingsInputSchema>;
 export type NotificationDeviceInput = z.infer<typeof notificationDeviceInputSchema>;

@@ -7,6 +7,7 @@ import {
   X, LogOut, Tags, Moon, ShieldCheck, UserRound, Info,
   LockKeyhole, Mail, Sparkles, CalendarDays, Repeat2,
   ChevronLeft, ChevronRight, Wrench, Loader2, RefreshCw,
+  PiggyBank,
 } from 'lucide-react';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
@@ -35,17 +36,19 @@ import {
 import { materializeRecurringTransactions, normalizeTransactions, type Recurrence, type Transaction, type TxType } from './transactions';
 import {
   deleteCloudTransaction, loadCloudUserData, saveCloudAppSettings, saveCloudBudgets, saveCloudFinancialSetup,
-  saveCloudProfile, saveCloudTransaction, saveNotificationDevice, type CloudUserData,
+  saveCloudProfile, saveCloudSavingsPortfolio, saveCloudTransaction, saveNotificationDevice, type CloudUserData,
 } from './database';
 import { migrateLocalStorageToApi } from './localMigration';
 import { persistThenCommit } from './cloudMutation';
 import { millisecondsUntilNextGreeting, timeGreeting } from './timeGreeting';
+import type { SavingsPortfolio } from './savings';
 
 const Onboarding = lazy(() => import('./Onboarding'));
 const DevPanel = lazy(() => import('./DevPanel'));
 const DesignReviewPanel = lazy(() => import('./DesignReviewPanel'));
+const SavingsPage = lazy(() => import('./SavingsPage'));
 
-type Page = 'dashboard' | 'transactions' | 'reports' | 'budgets' | 'settings' | 'profile' | 'dev';
+type Page = 'dashboard' | 'transactions' | 'reports' | 'budgets' | 'savings' | 'settings' | 'profile' | 'dev';
 type Category = { name: string; color: string; icon: string };
 type BudgetMap = Record<string, number>;
 type WeeklyBudgetStore = Record<string, BudgetMap>;
@@ -117,10 +120,11 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'transactions', label: 'تراکنش‌ها', icon: ReceiptText },
   { id: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
   { id: 'budgets', label: 'بودجه‌بندی', icon: Target },
+  { id: 'savings', label: 'پس‌انداز', icon: PiggyBank },
   { id: 'settings', label: 'تنظیمات', icon: Settings },
 ];
 const mobileNavItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
-  ...navItems.slice(0, 4),
+  ...navItems.slice(0, 5),
   { id: 'profile', label: 'پروفایل', icon: UserRound },
 ];
 
@@ -149,6 +153,7 @@ export default function App() {
   const [profile, setProfile] = useStoredState<UserProfile>(profileStorageKey(activeUserKey), emptyProfile);
   const [weeklyBudgets, setWeeklyBudgets] = useStoredState<WeeklyBudgetStore>(`gav-weekly-budgets-v1:${activeUserKey}`, initialWeeklyBudgets);
   const [financialSetup, setFinancialSetup] = useStoredState<FinancialSetup | null>(setupStorageKey(activeUserKey), null);
+  const [savingsPortfolio, setSavingsPortfolio] = useStoredState<SavingsPortfolio | null>(`gav-savings-v1:${activeUserKey}`, null);
   const [devSettings, setDevSettings] = useStoredState<DevSettings>(devSettingsStorageKey, defaultDevSettings);
   const [editingSetup, setEditingSetup] = useState(false);
   const [introShownThisSession, setIntroShownThisSession] = useState(false);
@@ -221,11 +226,13 @@ export default function App() {
     localStorage.setItem(`gav-budgets-v3:${userId}`, JSON.stringify(cloud.budgets));
     localStorage.setItem(`gav-weekly-budgets-v1:${userId}`, JSON.stringify(cloud.weeklyBudgets));
     localStorage.setItem(setupStorageKey(userId), JSON.stringify(cloud.financialSetup));
+    localStorage.setItem(`gav-savings-v1:${userId}`, JSON.stringify(cloud.savingsPortfolio));
     setProfile(cloud.profile);
     setTransactions(cloud.transactions);
     setBudgets(cloud.budgets);
     setWeeklyBudgets(cloud.weeklyBudgets);
     setFinancialSetup(cloud.financialSetup);
+    setSavingsPortfolio(cloud.savingsPortfolio);
     setDatabaseRole(cloud.role);
     if (cloud.appSettings) setDevSettings(normalizeDevSettings(cloud.appSettings));
   };
@@ -454,7 +461,7 @@ export default function App() {
       setBudgets(nextBudgets);
       setWeeklyBudgets({});
       setEditingSetup(false);
-      setPage('dashboard');
+      setPage(calculateSavingsAmount(setup.monthlyIncome, setup.savingsPercentBps, setup.savingsTargetAmount) > 0 && !savingsPortfolio ? 'savings' : 'dashboard');
       notify('برنامه‌ی مالی شما با موفقیت ذخیره شد');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ذخیره برنامه مالی انجام نشد.';
@@ -500,6 +507,12 @@ export default function App() {
       () => setDevSettings(next),
     );
   };
+  const updateSavingsPortfolio = async (next: SavingsPortfolio) => {
+    await persistThenCommit(
+      () => currentUser ? saveCloudSavingsPortfolio(currentUser.id, next) : Promise.resolve(),
+      () => setSavingsPortfolio(next),
+    );
+  };
 
   return withTheme(
     <div className={`app-shell page-${page}`}>
@@ -519,10 +532,11 @@ export default function App() {
         </header>
 
         <div className="content">
-          {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={totalSavings} openAdd={() => openNewTransaction()} />}
+          {page === 'dashboard' && <Dashboard settings={devSettings} profile={profile} month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={selectedTransactions} income={totalIncome} expense={totalExpense} savings={savingsPortfolio?.totalAmount ?? totalSavings} openAdd={() => openNewTransaction()} />}
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
           {page === 'budgets' && <Budgets month={selectedMonth} plan={activeFinancialSetup} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
+          {page === 'savings' && <Suspense fallback={lazyFallback}><SavingsPage month={selectedMonth} portfolio={savingsPortfolio} fallbackTotal={Math.max(transactions.filter(transaction => transaction.type === 'savings').reduce((sum, transaction) => sum + transaction.amount, 0), calculateSavingsAmount(activeFinancialSetup.monthlyIncome, activeFinancialSetup.savingsPercentBps, activeFinancialSetup.savingsTargetAmount))} onSave={updateSavingsPortfolio} notify={notify}/></Suspense>}
           {page === 'settings' && <SettingsPage userId={currentUser.id} cloudEnabled financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
           {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={async () => {
             try {
@@ -537,7 +551,7 @@ export default function App() {
           {page === 'dev' && canAccessDevPanel && <Suspense fallback={lazyFallback}><DevPanel settings={devSettings} setSettings={updateDevSettings} isLocalDevelopment={import.meta.env.DEV} notify={notify}/></Suspense>}
         </div>
 
-        {!['profile', 'settings', 'budgets', 'dev'].includes(page) && <button className="fab" onClick={() => openNewTransaction()}><Plus size={24} /><span>ثبت تراکنش</span></button>}
+        {!['profile', 'settings', 'budgets', 'savings', 'dev'].includes(page) && <button className="fab" onClick={() => openNewTransaction()}><Plus size={24} /><span>ثبت تراکنش</span></button>}
         <nav className="mobile-nav" aria-label="ناوبری اصلی">{mobileNavItems.map(item => <button key={item.id} aria-label={item.label} className={page === item.id ? 'active' : ''} onClick={() => setPage(item.id)}><item.icon size={22} /></button>)}</nav>
       </main>
 
@@ -658,8 +672,8 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
     return () => window.clearTimeout(timeoutId);
   }, []);
   const expenses = transactions.filter(t => t.type === 'expense');
-  const savingsTarget = calculateSavingsAmount(plan.monthlyIncome, plan.savingsPercentBps);
-  const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
+  const savingsTarget = calculateSavingsAmount(plan.monthlyIncome, plan.savingsPercentBps, plan.savingsTargetAmount);
+  const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps, plan.savingsTargetAmount);
   const byCategory = categoryOptions.filter(c => c.name !== 'حقوق').map(c => ({ ...c, value: expenses.filter(t => t.category === c.name).reduce((s, t) => s + t.amount, 0) })).filter(c => c.value > 0);
   const trendDays = [1, 5, 10, 15, 20, 25, month.length].filter((day, index, items) => items.indexOf(day) === index);
   const trendData = trendDays.map((day, index, days) => ({
@@ -774,7 +788,7 @@ function Reports({ month, plan, categoryOptions, transactions, income, expense, 
       savings: Math.round(items.filter(transaction => transaction.type === 'savings').reduce((sum, transaction) => sum + transaction.amount, 0) / 1000),
     };
   });
-  const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
+  const spendableAmount = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps, plan.savingsTargetAmount);
   const hasComparisonData = comparison.some(item => item.expense > 0 || item.savings > 0);
   return <div className="reports-page"><PageHeader title="گزارش‌ها" description="الگوی خرج‌کردنت رو کشف کن و یه کم باهوش‌تر تصمیم بگیر." />
     <section className="report-summary savings-report" aria-label={`خلاصه مالی ${month.label}`}>
@@ -817,7 +831,7 @@ function Budgets({ month, plan, categoryOptions, transactions, budgets, setBudge
     const parsed = parseJalaliDate(transaction.date);
     return Boolean(parsed && parsed.year === month.year && parsed.month === month.month && parsed.day >= week.startDay && parsed.day <= week.endDay);
   }).reduce((sum, transaction) => sum + transaction.amount, 0);
-  const totalBudget = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps);
+  const totalBudget = calculateSpendableAmount(plan.monthlyIncome, plan.savingsPercentBps, plan.savingsTargetAmount);
   const monthExpenses = transactions.filter(transaction => transaction.type === 'expense' && isInJalaliMonth(transaction.date, month));
   const totalSpent = monthExpenses.reduce((sum, transaction) => sum + transaction.amount, 0);
   const totalRemaining = totalBudget - totalSpent;
@@ -906,8 +920,8 @@ function SettingsPage({ userId, cloudEnabled, financialSetup, onEditFinancialSet
       setPushStatus(notificationPermission());
     } finally { setEnablingPush(false); }
   };
-  const savingsAmount = calculateSavingsAmount(financialSetup.monthlyIncome, financialSetup.savingsPercentBps);
-  const spendableAmount = calculateSpendableAmount(financialSetup.monthlyIncome, financialSetup.savingsPercentBps);
+  const savingsAmount = calculateSavingsAmount(financialSetup.monthlyIncome, financialSetup.savingsPercentBps, financialSetup.savingsTargetAmount);
+  const spendableAmount = calculateSpendableAmount(financialSetup.monthlyIncome, financialSetup.savingsPercentBps, financialSetup.savingsTargetAmount);
   return <>
     <PageHeader title="تنظیمات" description="حساب و تجربه‌ی کاربری گاو را شخصی‌سازی کن."/>
     <div className="settings-layout">

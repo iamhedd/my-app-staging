@@ -33,6 +33,11 @@ values (
   'expense', current_date
 );
 
+insert into public.savings_accounts (user_id, total_amount, target_month_key, monthly_target_amount)
+values ('test-user-a', 20000000, '1405/07', 20000000);
+insert into public.savings_goals (user_id, client_id, name, allocated_amount, target_amount)
+values ('test-user-a', 'travel', 'Travel', 5000000, 15000000);
+
 do $$
 begin
   if (select count(*) from public.transactions) <> 1 then
@@ -60,6 +65,9 @@ begin
   end if;
   if (select count(*) from public.user_roles) <> 1 then
     raise exception 'cross-user role rows leaked through RLS';
+  end if;
+  if (select count(*) from public.savings_accounts) <> 0 or (select count(*) from public.savings_goals) <> 0 then
+    raise exception 'cross-user savings data leaked through RLS';
   end if;
 end;
 $$;
@@ -102,6 +110,9 @@ begin
   end if;
   if (select count(*) from public.transactions) <> 1 then
     raise exception 'admin cannot inspect user transaction';
+  end if;
+  if (select count(*) from public.savings_accounts) <> 1 or (select count(*) from public.savings_goals) <> 1 then
+    raise exception 'admin cannot inspect user savings data';
   end if;
 end;
 $$;
