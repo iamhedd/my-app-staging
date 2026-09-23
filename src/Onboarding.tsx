@@ -10,7 +10,7 @@ import {
 import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { monthFromOffset, parseJalaliDate } from './dateUtils';
-import { createSavingsPortfolio, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { createSavingsPortfolio, onboardingSavingsBalance, type SavingsGoal, type SavingsPortfolio } from './savings';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -55,7 +55,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const totalPercent = totalBps / 100;
   const remainingAmount = spendableAmount - allocatedAmount;
   const savingsAllocationTotal = savingsGoals.reduce((sum, goal) => sum + goal.allocatedAmount, 0);
-  const onboardingSavingsTotal = initialSetup?.onboardingCompleted ? (initialSavingsPortfolio?.totalAmount ?? 0) : savingsAmount;
+  const onboardingSavingsTotal = onboardingSavingsBalance(initialSavingsPortfolio?.totalAmount ?? 0, savingsAmount);
   const unallocatedSavingsAmount = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal);
 
   const changeIncome = (value: string) => {

@@ -38,3 +38,7 @@ export function validateSavingsPortfolio(portfolio: SavingsPortfolio) {
 export function createSavingsPortfolio(totalAmount: number, monthKey: string): SavingsPortfolio {
   return { totalAmount, monthKey, monthlyTargetAmount: totalAmount, goals: [], updatedAt: new Date().toISOString() };
 }
+
+export function onboardingSavingsBalance(existingTotal: number, enteredAmount: number) {
+  return Math.max(0, existingTotal, enteredAmount);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocatedSavings, createSavingsPortfolio, unallocatedSavings, validateSavingsPortfolio } from './savings';
+import { allocatedSavings, createSavingsPortfolio, onboardingSavingsBalance, unallocatedSavings, validateSavingsPortfolio } from './savings';
 
 describe('savings portfolio', () => {
   it('treats goals as allocations, not extra assets', () => {
@@ -22,5 +22,10 @@ describe('savings portfolio', () => {
       goals: [{ id: 'home', name: 'خانه', allocatedAmount: 11_000_000, targetAmount: null, targetDate: null, completed: false }],
     };
     expect(validateSavingsPortfolio(portfolio)).toContain('بیشتر');
+  });
+
+  it('never lowers an existing balance when onboarding receives a monthly amount', () => {
+    expect(onboardingSavingsBalance(20_000_000, 5_000_000)).toBe(20_000_000);
+    expect(onboardingSavingsBalance(0, 10_000_000)).toBe(10_000_000);
   });
 });
