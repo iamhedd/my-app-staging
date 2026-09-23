@@ -1173,13 +1173,13 @@ body{color:var(--ink)}
 }
 
 /* Savings goal flow — reference-led, minimal two-stage composition. */
-.savings-goal-flow{gap:22px}
-.savings-goal-flow-heading{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.savings-goal-flow{gap:16px}
+.savings-goal-flow-heading{display:flex;flex-direction:column;align-items:flex-start;gap:5px}
 .savings-goal-flow-kicker{display:flex;align-items:center;gap:8px}
 .savings-goal-flow-kicker>span{font-size:11px;font-weight:800;color:var(--brand-accent)}
 .savings-goal-flow-kicker .ant-tag{margin:0;padding:2px 10px;border-radius:999px;background:var(--neutral-soft);color:var(--muted);font-size:10px}
-.savings-goal-flow-heading h1{margin:0;font-size:25px;line-height:1.55;color:var(--ink)}
-.savings-goal-flow-heading p{max-width:630px;margin:0;font-size:12px;line-height:2;color:var(--muted)}
+.savings-goal-flow-heading h1{margin:0;font-size:24px;line-height:1.55;color:var(--ink)}
+.savings-goal-flow-heading p{max-width:650px;margin:0;font-size:11px;line-height:1.9;color:var(--muted)}
 .savings-goal-flow-heading p strong{color:var(--ink)}
 
 .savings-goal-choice-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -1194,39 +1194,58 @@ body{color:var(--ink)}
 .savings-goal-choice-option>small{grid-column:2/4;grid-row:2;font-size:10px;line-height:1.9;color:var(--muted)}
 
 .savings-allocation-overview.ant-card{border:0;border-radius:18px;background:var(--brand-tint);box-shadow:none}
-.savings-allocation-overview>.ant-card-body{padding:18px 20px}
-.allocation-overview-top{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:10px}
-.allocation-overview-top>span{font-size:11px;font-weight:700;color:var(--brand-accent-dark)}
-.allocation-overview-top>strong{font-size:12px;color:var(--ink);white-space:nowrap}
-.allocation-overview-top>strong i{font-style:normal;font-weight:500;color:var(--muted)}
+.savings-allocation-overview>.ant-card-body{padding:15px 18px}
+.allocation-overview-primary{display:flex;align-items:baseline;gap:7px}
+.allocation-overview-primary strong{font-size:20px;line-height:1.5;color:var(--ink)}
+.allocation-overview-primary span{font-size:10px;font-weight:700;color:var(--brand-accent-dark)}
+.allocation-overview-meta{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 8px}
+.allocation-overview-meta span{font-size:9px;color:var(--muted)}
+.allocation-overview-meta b{font-size:10px;color:var(--brand-accent-dark)}
 .savings-allocation-overview .ant-progress{margin:0}
 .savings-allocation-overview .ant-progress-inner{background:#fff}
 .savings-allocation-overview .ant-progress-bg{background:linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))!important}
-.savings-allocation-overview> .ant-card-body>p{margin:8px 0 0;font-size:10px;color:var(--muted)}
+.savings-allocation-overview> .ant-card-body>p{margin:7px 0 0;font-size:9px;font-weight:700;color:#B42345}
 .savings-allocation-overview.over{box-shadow:inset 0 0 0 2px var(--brand-accent-dark)}
 
-.savings-goal-summary-list{display:flex;flex-direction:column;gap:10px}
+.savings-goal-summary-list{display:flex;flex-direction:column;gap:8px}
 .savings-goal-summary-card.ant-card{border:1px solid var(--border);border-radius:17px;background:#fff;box-shadow:none}
-.savings-goal-summary-card>.ant-card-body{padding:16px 18px}
-.goal-summary-main{display:grid;grid-template-columns:48px minmax(0,1fr) 34px;align-items:center;gap:12px}
-.goal-summary-emoji{width:48px;height:48px;display:grid;place-items:center;border-radius:13px;background:var(--brand-tint);font-size:22px}
-.goal-summary-main>div{display:flex;flex-direction:column;gap:3px;min-width:0}
-.goal-summary-main strong{font-size:13px;color:var(--ink)}
-.goal-summary-main small{font-size:9px;line-height:1.8;color:var(--muted);white-space:normal}
-.goal-summary-main>.ant-btn{width:34px;height:34px;color:#A0A6A0}
-.goal-summary-allocation{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:13px}
-.goal-summary-allocation span{font-size:10px;color:var(--muted)}
-.goal-summary-allocation strong{font-size:12px;color:var(--ink)}
+.savings-goal-summary-card>.ant-card-body{padding:14px 16px}
+.goal-summary-main{display:grid;grid-template-columns:44px minmax(0,1fr);align-items:start;gap:10px}
+.goal-summary-emoji{width:44px;height:44px;display:grid;place-items:center;border-radius:13px;background:var(--brand-tint);font-size:20px}
+.goal-summary-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
+.goal-summary-title{display:flex;align-items:center;gap:4px;min-width:0}
+.goal-summary-title strong{font-size:13px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.goal-summary-title .ant-btn{width:28px;height:28px;padding:0;color:var(--muted)}
+.goal-summary-copy>small{font-size:9px;line-height:1.8;color:var(--muted);white-space:normal}
+.goal-summary-incomplete{display:flex;align-items:center;flex-wrap:wrap;gap:1px 6px}
+.goal-summary-incomplete>span{font-size:9px;font-weight:700;color:#8A5666}
+.goal-summary-incomplete .ant-btn{height:auto;padding:0;font-size:9px;color:var(--brand-accent-dark)}
+.goal-summary-allocation-editor{display:grid;grid-template-columns:minmax(0,1fr) minmax(190px,.9fr);align-items:center;gap:7px 12px;margin-top:12px;padding-top:11px;border-top:1px solid var(--border)}
+.goal-summary-allocation-editor>label{font-size:10px;font-weight:700;color:var(--ink)}
+.goal-summary-allocation-editor>small{grid-column:2;font-size:8px;color:var(--muted)}
+.goal-allocation-input.ant-input-number-group-wrapper{width:100%}
+.goal-allocation-input .ant-input-number{width:100%;height:40px}
+.goal-allocation-input .ant-input-number-input{height:38px;font-weight:700}
 .goal-summary-progress{margin-top:8px}
+.goal-summary-progress>div{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:3px}
+.goal-summary-progress span,.goal-summary-progress small{font-size:8px;color:var(--muted)}
 .goal-summary-progress .ant-progress{margin:0}
-.goal-summary-progress small{display:block;margin-top:2px;font-size:9px;color:#A0A6A0}
 
-.savings-add-goal-box{display:flex;flex-direction:column;gap:12px;padding:18px;border:1px dashed var(--border-strong);border-radius:18px;background:#fff}
-.savings-add-goal-box>strong{font-size:12px;color:var(--ink)}
+.savings-add-goal-box{display:flex;flex-direction:column;gap:9px;padding:14px 16px;border:1px dashed var(--border-strong);border-radius:17px;background:#fff}
+.savings-add-goal-heading{display:flex;flex-direction:column;gap:2px}
+.savings-add-goal-heading strong{font-size:12px;color:var(--ink)}
+.savings-add-goal-heading span{font-size:8px;color:var(--muted)}
 .savings-add-goal-presets{display:flex;flex-wrap:wrap;gap:7px}
 .savings-add-goal-presets .ant-btn{height:32px;padding-inline:12px;border-radius:999px;font-size:10px}
-.savings-add-goal-box .onboarding-add-goal .ant-input{height:42px}
-.savings-add-goal-box .onboarding-add-goal .ant-input-search-button{width:42px;height:42px;border-color:var(--ink);background:var(--ink);color:#fff}
+.savings-add-goal-presets .ant-btn.selected{border-color:var(--brand-accent);background:var(--brand-tint);color:var(--brand-accent-dark)}
+.savings-add-goal-input{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:stretch}
+.savings-add-goal-input .ant-input{height:42px;border-radius:0 11px 11px 0}
+.savings-add-goal-input .ant-btn{height:42px;border-radius:11px 0 0 11px;padding-inline:15px}
+.savings-add-goal-input.has-error .ant-input{border-color:#D94B62;box-shadow:0 0 0 2px #D94B6214}
+.savings-add-goal-error{margin-top:-4px;font-size:9px;font-weight:700;color:#B42345}
+.onboarding-actions.has-skip{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:10px}
+.onboarding-actions.has-skip .next-button{justify-self:end}
+.skip-goals-button{height:36px!important;padding-inline:8px!important;color:var(--muted);box-shadow:none}
 
 .savings-goal-editor-modal .ant-modal-content{border-radius:18px}
 .savings-goal-editor-modal .ant-modal-title{font-size:14px}
@@ -1255,24 +1274,29 @@ body{color:var(--ink)}
 .goal-date-calendar-footer .ant-btn{height:30px;font-size:9px}
 
 @media(max-width:650px){
-  .savings-goal-flow{gap:16px}
+  .savings-goal-flow{gap:13px}
   .savings-goal-flow-heading h1{font-size:20px}
   .savings-goal-flow-heading p{font-size:10px;line-height:1.9}
   .savings-goal-choice-grid{grid-template-columns:minmax(0,1fr);gap:10px}
   .ant-btn.savings-goal-choice-option{min-height:118px;padding:16px;grid-template-columns:38px minmax(0,1fr) 20px}
   .savings-goal-choice-option .choice-icon{width:38px;height:38px}
-  .savings-allocation-overview>.ant-card-body{padding:15px}
-  .allocation-overview-top{align-items:flex-start;flex-direction:column;gap:4px}
-  .savings-goal-summary-card>.ant-card-body{padding:14px}
-  .goal-summary-main{grid-template-columns:42px minmax(0,1fr) 32px;gap:9px}
+  .savings-allocation-overview>.ant-card-body{padding:13px 14px}
+  .allocation-overview-primary strong{font-size:18px}
+  .savings-goal-summary-card>.ant-card-body{padding:13px}
+  .goal-summary-main{grid-template-columns:40px minmax(0,1fr);gap:8px}
   .goal-summary-emoji{width:42px;height:42px;font-size:19px}
-  .goal-summary-main strong{font-size:12px}
-  .savings-add-goal-box{padding:14px}
+  .goal-summary-title strong{font-size:12px}
+  .goal-summary-allocation-editor{grid-template-columns:1fr;margin-top:10px;padding-top:10px}
+  .goal-summary-allocation-editor>small{grid-column:1}
+  .savings-add-goal-box{padding:13px}
   .savings-add-goal-presets{display:grid;grid-template-columns:1fr 1fr}
   .savings-add-goal-presets .ant-btn{width:100%;min-width:0;padding-inline:6px}
+  .onboarding-actions.has-skip{grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:5px}
+  .onboarding-actions.has-skip button{min-width:0;padding-inline:9px}
+  .skip-goals-button{padding-inline:3px!important;font-size:9px!important}
 }
 
 @media(max-width:340px){
   .savings-add-goal-presets{grid-template-columns:1fr}
-  .goal-summary-allocation{align-items:flex-start;flex-direction:column;gap:4px}
+  .savings-add-goal-input .ant-btn{padding-inline:10px}
 }
