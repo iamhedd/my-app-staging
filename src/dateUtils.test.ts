@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocateMonthlyAmountByWeek, displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, monthFromOffset, parseJalaliDate, shiftJalaliMonth, todayJalali, weeksOfJalaliMonth } from './dateUtils';
+import { allocateMonthlyAmountByWeek, displayJalaliDate, elapsedDaysInMonth, isInJalaliMonth, millisecondsUntilNextLocalDay, monthFromOffset, parseJalaliDate, shiftJalaliMonth, todayJalali, weeksOfJalaliMonth } from './dateUtils';
 import { materializeRecurringTransactions, normalizeTransactions, type Transaction } from './transactions';
 
 describe('jalali date utilities', () => {
@@ -17,6 +17,10 @@ describe('jalali date utilities', () => {
     expect(monthFromOffset(0, now).label).toBe('شهریور ۱۴۰۵');
     expect(isInJalaliMonth('۱۴۰۵/۰۶/۲۳', monthFromOffset(0, now))).toBe(true);
     expect(elapsedDaysInMonth(monthFromOffset(0, now), now)).toBe(23);
+  });
+
+  it('schedules a refresh just after the next local midnight', () => {
+    expect(millisecondsUntilNextLocalDay(new Date(2026, 8, 23, 23, 59, 30))).toBe(31_000);
   });
 
   it('splits a Jalali month into Saturday-to-Friday segments', () => {

@@ -8,6 +8,7 @@ type Props = {
   month: JalaliMonth;
   portfolio: SavingsPortfolio | null;
   fallbackTotal: number;
+  suggestedAmount: number;
   onSave: (portfolio: SavingsPortfolio) => Promise<void>;
   notify: (message: string) => void;
 };
@@ -15,11 +16,11 @@ type Props = {
 const money = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
 const presets = ['صندوق اضطراری', 'سفر', 'خرید ماشین', 'خرید خانه', 'سرمایه‌گذاری', 'خرید لپ‌تاپ', 'سایر'];
 
-export default function SavingsPage({ month, portfolio, fallbackTotal, onSave, notify }: Props) {
+export default function SavingsPage({ month, portfolio, fallbackTotal, suggestedAmount, onSave, notify }: Props) {
   const monthKey = `${month.year}/${String(month.month).padStart(2, '0')}`;
   const [setupOpen, setSetupOpen] = useState(!portfolio);
   const [setupStep, setSetupStep] = useState<1 | 2>(1);
-  const [setupAmount, setSetupAmount] = useState<number | null>(portfolio?.monthlyTargetAmount || fallbackTotal || null);
+  const [setupAmount, setSetupAmount] = useState<number | null>(portfolio?.monthlyTargetAmount || suggestedAmount || fallbackTotal || null);
   const [goalOpen, setGoalOpen] = useState(false);
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [goalName, setGoalName] = useState('');
@@ -75,6 +76,14 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, onSave, n
     setSetupOpen(false);
     setSetupStep(1);
     if (categorize) openGoal();
+  };
+
+  const skipInitialSetup = async () => {
+    const saved = await persist(createSavingsPortfolio(fallbackTotal, monthKey), 'فعلاً بدون هدف پس‌انداز ادامه می‌دهی');
+    if (saved) {
+      setSetupOpen(false);
+      setSetupStep(1);
+    }
   };
 
   const openGoal = (goal?: SavingsGoal) => {
@@ -181,8 +190,8 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, onSave, n
       </Card>;
     })}</div>}
 
-    <Modal open={setupOpen} closable={Boolean(portfolio)} maskClosable={false} title={setupStep === 1 ? 'پس‌انداز این ماه' : 'هدف‌بندی پس‌انداز'} footer={null} onCancel={() => portfolio && setSetupOpen(false)}>
-      {setupStep === 1 ? <Form layout="vertical" onFinish={() => setupAmount && setupAmount > 0 ? (setError(''), setSetupStep(2)) : setError('مبلغ پس‌انداز این ماه را وارد کن.')}><p className="savings-modal-lead">این ماه چقدر می‌خوای پس‌انداز کنی؟</p><Form.Item label="مبلغ پس‌انداز"><InputNumber className="ant-money-input" autoFocus min={1} precision={0} value={setupAmount} onChange={setSetupAmount} addonAfter="تومان"/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" htmlType="submit">ادامه</Button></Form> : <div className="savings-choice-step"><PiggyBank size={38}/><h3>می‌خوای پس‌اندازت رو برای هدف‌های مختلف دسته‌بندی کنی؟</h3><p>این مرحله اختیاری است و هر زمان بخواهی می‌توانی هدف بسازی.</p>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" loading={saving} onClick={() => finishInitialSetup(true)}>بله، هدف‌بندی کنم</Button><Button block loading={saving} onClick={() => finishInitialSetup(false)}>فعلاً نه</Button></div>}
+    <Modal open={setupOpen} closable maskClosable={!saving} title={setupStep === 1 ? 'پس‌انداز این ماه' : 'هدف‌بندی پس‌انداز'} footer={null} onCancel={() => !saving && (portfolio ? setSetupOpen(false) : skipInitialSetup())}>
+      {setupStep === 1 ? <Form layout="vertical" onFinish={() => setupAmount && setupAmount > 0 ? (setError(''), setSetupStep(2)) : setError('مبلغ پس‌انداز این ماه را وارد کن.')}><p className="savings-modal-lead">این ماه چقدر می‌خوای پس‌انداز کنی؟</p><Form.Item label="مبلغ پس‌انداز"><InputNumber className="ant-money-input" autoFocus min={1} precision={0} value={setupAmount} onChange={setSetupAmount} addonAfter="تومان"/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" htmlType="submit">ادامه</Button><Button block type="text" loading={saving} onClick={skipInitialSetup}>فعلاً بعداً</Button></Form> : <div className="savings-choice-step"><PiggyBank size={38}/><h3>می‌خوای پس‌اندازت رو برای هدف‌های مختلف دسته‌بندی کنی؟</h3><p>این مرحله اختیاری است و هر زمان بخواهی می‌توانی هدف بسازی.</p>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" loading={saving} onClick={() => finishInitialSetup(true)}>بله، هدف‌بندی کنم</Button><Button block loading={saving} onClick={() => finishInitialSetup(false)}>فعلاً نه</Button></div>}
     </Modal>
 
     <Modal open={goalOpen} title={editingGoal ? 'ویرایش هدف' : 'هدف جدید'} footer={null} onCancel={() => !saving && setGoalOpen(false)} destroyOnHidden>

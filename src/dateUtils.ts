@@ -81,6 +81,12 @@ export function monthFromOffset(offset = 0, now = new Date()) {
   return shiftJalaliMonth(today.year, today.month, offset);
 }
 
+export function millisecondsUntilNextLocalDay(now = new Date()) {
+  const nextDay = new Date(now);
+  nextDay.setHours(24, 0, 1, 0);
+  return Math.max(1, nextDay.getTime() - now.getTime());
+}
+
 export function recentJalaliMonths(selected: JalaliMonth, count = 6) {
   return Array.from({ length: count }, (_, index) => shiftJalaliMonth(selected.year, selected.month, index - count + 1));
 }

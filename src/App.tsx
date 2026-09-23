@@ -31,7 +31,7 @@ import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normaliz
 import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, validateBudgetAllocationLimit, type FinancialSetup } from './financialSetup';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
-  monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
+  millisecondsUntilNextLocalDay, monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
 } from './dateUtils';
 import { materializeRecurringTransactions, normalizeTransactions, type Recurrence, type Transaction, type TxType } from './transactions';
 import {
@@ -161,6 +161,7 @@ export default function App() {
   const [newTransactionDate, setNewTransactionDate] = useState<string | null>(null);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [selectedMonthOffset, setSelectedMonthOffset] = useState(0);
+  const [calendarNow, setCalendarNow] = useState(() => new Date());
   const [showDailyCalendar, setShowDailyCalendar] = useState(false);
   const [selectedDailyDate, setSelectedDailyDate] = useState(() => {
     const today = todayJalali();
@@ -196,6 +197,19 @@ export default function App() {
   useEffect(() => {
     if (page === 'dev' && !canAccessDevPanel) setPage('dashboard');
   }, [page, canAccessDevPanel]);
+
+  useEffect(() => {
+    let timeoutId: number;
+    const scheduleNextDay = () => {
+      const now = new Date();
+      timeoutId = window.setTimeout(() => {
+        setCalendarNow(new Date());
+        scheduleNextDay();
+      }, millisecondsUntilNextLocalDay(now));
+    };
+    scheduleNextDay();
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   useEffect(() => {
     if (profile.email || !activeUserKey.startsWith('email:')) return;
@@ -317,7 +331,7 @@ export default function App() {
     return () => unsubscribe();
   }, [authStatus]);
 
-  const selectedMonth = monthFromOffset(selectedMonthOffset);
+  const selectedMonth = monthFromOffset(selectedMonthOffset, calendarNow);
   const openDailyCalendar = () => {
     const today = todayJalali();
     const day = selectedMonth.year === today.year && selectedMonth.month === today.month ? today.day : 1;
@@ -536,7 +550,7 @@ export default function App() {
           {page === 'transactions' && <Transactions month={selectedMonth} categoryOptions={appCategories} transactions={transactions} onEdit={(transaction) => { setShowAdd(false); setNewTransactionDate(null); setEditingTransaction(transaction); }} onDelete={removeTransaction} openAdd={() => openNewTransaction()} />}
           {page === 'reports' && <Reports month={selectedMonth} plan={activeFinancialSetup} categoryOptions={appCategories} transactions={transactions} income={totalIncome} expense={totalExpense} savings={totalSavings} />}
           {page === 'budgets' && <Budgets month={selectedMonth} plan={activeFinancialSetup} categoryOptions={expenseCategories} transactions={transactions} budgets={budgets} setBudgets={updateBudgetMap} notify={notify} />}
-          {page === 'savings' && <Suspense fallback={lazyFallback}><SavingsPage month={selectedMonth} portfolio={savingsPortfolio} fallbackTotal={Math.max(transactions.filter(transaction => transaction.type === 'savings').reduce((sum, transaction) => sum + transaction.amount, 0), calculateSavingsAmount(activeFinancialSetup.monthlyIncome, activeFinancialSetup.savingsPercentBps, activeFinancialSetup.savingsTargetAmount))} onSave={updateSavingsPortfolio} notify={notify}/></Suspense>}
+          {page === 'savings' && <Suspense fallback={lazyFallback}><SavingsPage month={selectedMonth} portfolio={savingsPortfolio} fallbackTotal={transactions.filter(transaction => transaction.type === 'savings').reduce((sum, transaction) => sum + transaction.amount, 0)} suggestedAmount={calculateSavingsAmount(activeFinancialSetup.monthlyIncome, activeFinancialSetup.savingsPercentBps, activeFinancialSetup.savingsTargetAmount)} onSave={updateSavingsPortfolio} notify={notify}/></Suspense>}
           {page === 'settings' && <SettingsPage userId={currentUser.id} cloudEnabled financialSetup={activeFinancialSetup} onEditFinancialSetup={() => setEditingSetup(true)} notify={notify} />}
           {page === 'profile' && <ProfilePage profile={profile} setProfile={updateProfile} notify={notify} onLogout={async () => {
             try {
