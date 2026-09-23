@@ -463,19 +463,21 @@ export default function App() {
     return withTheme(<IntroOnboarding onComplete={completeProductIntro} />);
   }
 
-  const completeSetup = async (setup: FinancialSetup) => {
+  const completeSetup = async (setup: FinancialSetup, nextSavingsPortfolio: SavingsPortfolio) => {
     if (!currentUser) return;
     const nextBudgets = budgetsFromFinancialSetup(setup);
     try {
       if (currentUser) {
         await saveCloudFinancialSetup(currentUser.id, setup);
         await saveCloudBudgets(currentUser.id, nextBudgets, {});
+        await saveCloudSavingsPortfolio(currentUser.id, nextSavingsPortfolio);
       }
       setFinancialSetup(setup);
       setBudgets(nextBudgets);
       setWeeklyBudgets({});
+      setSavingsPortfolio(nextSavingsPortfolio);
       setEditingSetup(false);
-      setPage(calculateSavingsAmount(setup.monthlyIncome, setup.savingsPercentBps, setup.savingsTargetAmount) > 0 && !savingsPortfolio ? 'savings' : 'dashboard');
+      setPage('dashboard');
       notify('برنامه‌ی مالی شما با موفقیت ذخیره شد');
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ذخیره برنامه مالی انجام نشد.';
@@ -485,7 +487,7 @@ export default function App() {
   };
 
   if (!activeFinancialSetup?.onboardingCompleted || editingSetup) {
-    return withTheme(<Suspense fallback={lazyFallback}><Onboarding initialSetup={activeFinancialSetup} onComplete={completeSetup} onCancel={activeFinancialSetup?.onboardingCompleted ? () => setEditingSetup(false) : undefined} /></Suspense>);
+    return withTheme(<Suspense fallback={lazyFallback}><Onboarding initialSetup={activeFinancialSetup} initialSavingsPortfolio={savingsPortfolio} onComplete={completeSetup} onCancel={activeFinancialSetup?.onboardingCompleted ? () => setEditingSetup(false) : undefined} /></Suspense>);
   }
 
   const expenseCategories: Category[] = activeFinancialSetup.categories.map((category, index) => ({ name: category.name, color: visualCategoryColors[index % visualCategoryColors.length], icon: category.icon }));
