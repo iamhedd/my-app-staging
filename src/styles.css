@@ -1041,9 +1041,13 @@ body{color:var(--ink)}
 .savings-percent-editor{display:flex;flex-direction:column;gap:13px;padding-top:15px}
 .savings-percent-heading{display:flex;align-items:center;justify-content:space-between;gap:12px}
 .savings-percent-heading>span{font-size:11px;font-weight:700}
-.savings-percent-heading .ant-input-number-group-wrapper{width:112px;flex:0 0 112px}
-.savings-percent-heading .ant-input-number{width:100%;height:38px}
+.savings-percent-value{min-width:58px;padding:6px 11px;border-radius:999px;background:var(--brand-tint);color:var(--brand-accent-dark);font-size:12px;text-align:center}
 .savings-percent-editor .ant-slider{margin:4px 6px 2px}
+.savings-percent-slider .ant-slider-rail{height:8px;background:var(--neutral-soft)}
+.savings-percent-slider .ant-slider-track{height:8px;background:linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))}
+.savings-percent-slider .ant-slider-handle{width:22px;height:22px;margin-top:-1px}
+.savings-percent-slider .ant-slider-handle:after{width:18px;height:18px;box-shadow:0 0 0 3px var(--brand-accent)}
+.savings-percent-slider:hover .ant-slider-track{background:linear-gradient(90deg,var(--brand-accent-dark),var(--brand-accent))}
 .savings-percent-editor .ant-alert,.savings-percentage-card>.ant-card-body>.ant-alert{margin:0;border-radius:11px;background:var(--brand-tint);border-color:var(--brand-soft)}
 .savings-percent-editor .ant-alert-message{font-size:10px;line-height:1.8}
 .onboarding-income-summary{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -1108,8 +1112,7 @@ body{color:var(--ink)}
   .onboarding-section-title .step-icon{width:40px;height:40px;border-radius:12px}
   .onboarding-section-title h1{font-size:17px}
   .onboarding-section-title p{font-size:10px;line-height:1.8}
-  .savings-percent-heading{align-items:flex-start;flex-direction:column;gap:8px}
-  .savings-percent-heading .ant-input-number-group-wrapper{width:100%}
+  .savings-percent-heading{align-items:center;flex-direction:row;gap:8px}
   .onboarding-income-summary{grid-template-columns:1fr}
   .onboarding-income-summary .ant-card-body{padding:12px 14px}
   .savings-choice-card .ant-segmented-item-label{padding-inline:5px;font-size:9px}
@@ -1230,6 +1233,26 @@ body{color:var(--ink)}
 .savings-goal-editor-modal .ant-form-item{margin-bottom:13px}
 .savings-goal-editor-modal .ant-input,.savings-goal-editor-modal .ant-input-number{min-height:42px;border-radius:10px}
 .savings-goal-editor-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-top:4px}
+
+.goal-date-picker-trigger{width:100%;min-height:44px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--border);border-radius:11px;background:#fff;color:var(--muted);font:inherit;text-align:right;cursor:pointer;transition:.18s}
+.goal-date-picker-trigger:hover,.goal-date-picker-trigger[aria-expanded="true"]{border-color:var(--brand-accent);box-shadow:0 0 0 2px var(--brand-tint)}
+.goal-date-picker-trigger>svg:first-child{color:var(--brand-accent-dark)}
+.goal-date-picker-trigger.has-value span{color:var(--ink);font-weight:700}
+.goal-date-picker-popover .ant-popover-inner{width:min(310px,calc(100vw - 40px));box-sizing:border-box;padding:12px;border-radius:16px;box-shadow:0 16px 44px #1717171F}
+.goal-date-calendar-popover{width:100%}
+.goal-date-calendar-header{display:grid;grid-template-columns:34px minmax(0,1fr) 34px;align-items:center;gap:8px;margin-bottom:8px}
+.goal-date-calendar-header strong{text-align:center;font-size:12px}
+.goal-date-calendar-header .ant-btn{width:34px;height:34px;padding:0}
+.goal-date-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;direction:rtl}
+.goal-date-calendar-grid>i{min-height:34px}
+.goal-date-weekday{padding:3px 0;text-align:center;color:var(--muted);font-size:8px;font-weight:700}
+.goal-date-calendar-grid>button{position:relative;min-width:0;height:34px;padding:0;border:0;border-radius:9px;background:#fff;color:var(--ink);font:inherit;font-size:10px;font-weight:700;cursor:pointer}
+.goal-date-calendar-grid>button:hover{background:var(--brand-tint);color:var(--brand-accent-dark)}
+.goal-date-calendar-grid>button.today:after{content:'';position:absolute;inset-inline:10px;bottom:4px;height:2px;border-radius:99px;background:var(--brand-accent)}
+.goal-date-calendar-grid>button.selected{background:var(--brand-accent);color:#fff}
+.goal-date-calendar-grid>button.selected:after{background:#fff}
+.goal-date-calendar-footer{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;padding-top:8px;border-top:1px solid var(--border)}
+.goal-date-calendar-footer .ant-btn{height:30px;font-size:9px}
 
 @media(max-width:650px){
   .savings-goal-flow{gap:16px}

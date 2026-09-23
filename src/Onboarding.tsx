@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Pencil, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Statistic, Switch, Tag } from 'antd';
+import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Slider, Statistic, Switch, Tag } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, formatCompactToman, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -11,6 +11,7 @@ import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './catego
 import CategoryIconVisual from './CategoryIconVisual';
 import { monthFromOffset, parseJalaliDate } from './dateUtils';
 import { createSavingsPortfolio, onboardingSavingsBalance, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
+import JalaliDatePicker from './JalaliDatePicker';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -250,7 +251,8 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
             <Card size="small" className="savings-percentage-card">
               <div className="savings-toggle-row"><div><Vault size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
               {savingsEnabled ? <div className="savings-percent-editor">
-                <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><InputNumber aria-label="درصد پس انداز" min={1} max={100} step={0.5} precision={2} controls={false} value={savingsPercent} onChange={changeSavingsPercent} addonAfter="٪"/></div>
+                <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><strong className="savings-percent-value">{new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪</strong></div>
+                <Slider className="savings-percent-slider" aria-label="درصد پس انداز" min={1} max={100} step={0.5} value={savingsPercent} onChange={changeSavingsPercent} tooltip={{ formatter: value => `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(value ?? 0)}٪` }}/>
                 <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{formatCompactToman(savingsAmount)}</strong> می‌شود.</span>}/>
               </div> : <Alert type="info" showIcon message="فعلاً بدون پس‌انداز ادامه می‌دهی؛ بعداً از تنظیمات می‌توانی فعالش کنی."/>}
             </Card>
@@ -359,7 +361,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
         <Form.Item label="نام هدف"><Input value={editingSavingsGoal.name} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { name: event.target.value })}/></Form.Item>
         <Form.Item label="مبلغ اختصاص‌یافته"><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.allocatedAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></Form.Item>
         <Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
-        <Form.Item label="تاریخ هدف (اختیاری)"><Input inputMode="numeric" value={editingSavingsGoal.targetDate || ''} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></Form.Item>
+        <Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={editingSavingsGoal.targetDate || ''} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetDate: value || null })}/></Form.Item>
         <div className="savings-goal-editor-actions"><Button danger type="text" icon={<Trash2 size={15}/>} onClick={() => { setSavingsGoals(goals => goals.filter(goal => goal.id !== editingSavingsGoal.id)); setEditingSavingsGoalId(null); }}>حذف هدف</Button><Button type="primary" onClick={() => setEditingSavingsGoalId(null)}>تمام</Button></div>
       </Form>}
     </Modal>
