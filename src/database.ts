@@ -67,6 +67,7 @@ type ApiSavingsPortfolio = {
     id: string;
     name: string;
     allocatedAmount: string | number;
+    monthlyContribution?: string | number;
     targetAmount: string | number | null;
     targetDate: string | null;
     completed: boolean;
@@ -162,6 +163,7 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
       id: goal.id,
       name: goal.name,
       allocatedAmount: moneyNumber(goal.allocatedAmount, `تخصیص ${goal.name}`),
+      monthlyContribution: goal.monthlyContribution == null ? 0 : moneyNumber(goal.monthlyContribution, `مبلغ ماهانه ${goal.name}`),
       targetAmount: goal.targetAmount === null ? null : moneyNumber(goal.targetAmount, `هدف ${goal.name}`),
       targetDate: goal.targetDate ? (isoDateToJalali(goal.targetDate) || null) : null,
       completed: goal.completed,
@@ -277,6 +279,7 @@ export async function saveCloudSavingsPortfolio(_userId: string, portfolio: Savi
         id: goal.id,
         name: goal.name.trim(),
         allocatedAmount: moneyString(goal.allocatedAmount, `تخصیص ${goal.name}`),
+        monthlyContribution: moneyString(goal.monthlyContribution ?? 0, `مبلغ ماهانه ${goal.name}`),
         targetAmount: goal.targetAmount === null ? null : moneyString(goal.targetAmount, `هدف ${goal.name}`, true),
         targetDate: goal.targetDate ? jalaliToIsoDate(goal.targetDate) : null,
         completed: goal.completed,

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, CalendarDays, Check, CircleDollarSign, Pencil, Plus, RotateCcw, Trash2, Vault } from 'lucide-react';
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Progress, Segmented, Select, Tag } from 'antd';
-import { jalaliMonthNames, monthFromOffset, parseJalaliDate, toPersianDigits, type JalaliMonth } from './dateUtils';
-import { allocatedSavings, createSavingsPortfolio, recentGoalProgress, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { displayJalaliDate, monthFromOffset, parseJalaliDate, type JalaliMonth } from './dateUtils';
+import { allocatedSavings, createSavingsPortfolio, formatSavingsDuration, savingsGoalProjection, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
 import JalaliDatePicker from './JalaliDatePicker';
 
 type Props = {
@@ -26,6 +26,7 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
   const [editingGoal, setEditingGoal] = useState<SavingsGoal | null>(null);
   const [goalName, setGoalName] = useState('');
   const [goalAllocation, setGoalAllocation] = useState<number | null>(null);
+  const [goalMonthlyContribution, setGoalMonthlyContribution] = useState<number | null>(null);
   const [goalTarget, setGoalTarget] = useState<number | null>(null);
   const [goalDate, setGoalDate] = useState('');
   const [balanceOpen, setBalanceOpen] = useState(false);
@@ -92,6 +93,7 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
     setEditingGoal(goal || null);
     setGoalName(goal?.name || '');
     setGoalAllocation(goal?.allocatedAmount ?? null);
+    setGoalMonthlyContribution(goal?.monthlyContribution ?? null);
     setGoalTarget(goal?.targetAmount ?? null);
     setGoalDate(goal?.targetDate || '');
     setError('');
@@ -103,12 +105,15 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
     if (!goalName.trim()) return setError('نام هدف را وارد کن.');
     const allocation = goalAllocation ?? 0;
     if (!Number.isSafeInteger(allocation) || allocation < 0) return setError('مبلغ تخصیص معتبر نیست.');
+    const monthlyContribution = goalMonthlyContribution ?? 0;
+    if (!Number.isSafeInteger(monthlyContribution) || monthlyContribution < 0) return setError('مبلغ ماهانه معتبر نیست.');
     if (goalTarget !== null && (!Number.isSafeInteger(goalTarget) || goalTarget <= 0)) return setError('مبلغ نهایی هدف معتبر نیست.');
     if (goalDate && !parseJalaliDate(goalDate)) return setError('تاریخ هدف را به شکل ۱۴۰۶/۰۱/۳۱ وارد کن.');
     const nextGoal: SavingsGoal = {
       id: editingGoal?.id || crypto.randomUUID(),
       name: goalName.trim(),
       allocatedAmount: allocation,
+      monthlyContribution,
       targetAmount: goalTarget,
       targetDate: goalDate || null,
       completed: editingGoal?.completed || false,
@@ -183,31 +188,24 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
 
     <div className="savings-section-heading"><div><h2>هدف‌های پس‌انداز</h2><span>{portfolio?.goals.length || 0} هدف</span></div><Button icon={<Plus size={16}/>} onClick={() => openGoal()}>هدف جدید</Button></div>
     {!portfolio?.goals.length ? <Card className="savings-empty" variant="borderless"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<><strong>فعلاً همه پس‌اندازت بدون هدف است</strong><span>هر وقت خواستی بخشی از آن را برای یک هدف کنار بگذار.</span></>}><Button type="primary" onClick={() => openGoal()}>اولین هدف را بساز</Button></Empty></Card> : <div className="savings-goal-grid">{portfolio.goals.map(goal => {
-      const progress = goal.targetAmount ? Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100)) : null;
-      const monthlyProgress = recentGoalProgress(goal, monthFromOffset(0).key);
+      const projection = savingsGoalProjection(goal);
+      const pacePercent = Math.min(100, projection.pacePercent ?? 0);
+      const monthlyGap = projection.requiredMonthlyAmount ? Math.max(0, projection.requiredMonthlyAmount - (goal.monthlyContribution ?? 0)) : 0;
       return <Card key={goal.id} className={`savings-goal-card ${goal.completed ? 'completed' : ''}`} variant="borderless">
         <div className="savings-goal-top"><div className="savings-goal-icon">{goal.completed ? <Check size={20}/> : <TargetIcon/>}</div><div><strong>{goal.name}</strong>{goal.completed && <Tag>تکمیل‌شده</Tag>}</div><Button type="text" aria-label={`ویرایش ${goal.name}`} icon={<Pencil size={16}/>} onClick={() => openGoal(goal)}/></div>
-        <div className="savings-goal-amount"><span>مبلغ اختصاص‌یافته</span><strong>{money(goal.allocatedAmount)}</strong></div>
-        {goal.targetAmount ? <><div className="savings-goal-progress-copy"><span>{money(goal.targetAmount)} هدف نهایی</span><b>{progress}٪</b></div><Progress percent={progress || 0} showInfo={false}/></> : <div className="savings-goal-no-target">مبلغ نهایی تعیین نشده</div>}
-        <div className="goal-monthly-progress">
-          <div className="goal-monthly-progress-title"><strong>پیشرفت ماه‌به‌ماه</strong><span>تا ۶ ماه اخیر</span></div>
-          {goal.targetAmount ? monthlyProgress.map(item => {
-            const percent = Math.min(100, Math.round(item.amount / goal.targetAmount! * 100));
-            return <div className="goal-monthly-progress-row" key={item.monthKey}>
-              <span>{goalMonthLabel(item.monthKey)}</span>
-              <Progress percent={percent} showInfo={false}/>
-              <b>{toPersianDigits(percent)}٪</b>
-            </div>;
-          }) : <>
-            {monthlyProgress.map(item => <div className="goal-monthly-progress-row no-target" key={item.monthKey}>
-              <span>{goalMonthLabel(item.monthKey)}</span>
-              <Progress percent={0} showInfo={false}/>
-              <b>—</b>
-            </div>)}
-            <div className="goal-monthly-progress-empty">برای محاسبه درصد، مبلغ نهایی هدف را مشخص کن.</div>
-          </>}
+        <div className="savings-goal-amount"><span>تا الان کنار گذاشته‌ای</span><strong>{money(goal.allocatedAmount)}</strong>{goal.targetAmount && <small>از {money(goal.targetAmount)}</small>}</div>
+        <div className={`goal-schedule ${projection.status}`}>
+          <div className="goal-schedule-title"><strong>برنامه رسیدن به هدف</strong>{projection.status === 'on-track' && <Tag color="success">طبق برنامه</Tag>}{projection.status === 'behind' && <Tag color="warning">عقب‌تر از برنامه</Tag>}</div>
+          {!goal.targetAmount ? <button type="button" className="goal-schedule-setup" onClick={() => openGoal(goal)}>مبلغ نهایی هدف را مشخص کن</button>
+            : !goal.targetDate ? <div className="goal-schedule-estimate"><span>{goal.monthlyContribution ? `با ماهی ${money(goal.monthlyContribution)} حدود ${formatSavingsDuration(projection.projectedMonths)} دیگر به هدف می‌رسی.` : 'مبلغ ماهانه را مشخص کن.'}</span><Button type="link" onClick={() => openGoal(goal)}>تاریخ هدف را اضافه کن</Button></div>
+              : <>
+                <div className="goal-schedule-metrics"><div><span>برنامه ماهانه</span><b>{money(goal.monthlyContribution ?? 0)}</b></div><div><span>لازم برای موعد</span><b>{money(projection.requiredMonthlyAmount ?? 0)}</b></div></div>
+                <div className="goal-schedule-bar-label"><span>پوشش مبلغ ماهانه لازم</span><b>{new Intl.NumberFormat('fa-IR').format(projection.pacePercent ?? 0)}٪</b></div>
+                <Progress percent={pacePercent} showInfo={false} status={projection.status === 'behind' || projection.status === 'no-contribution' ? 'exception' : 'normal'}/>
+                <p>{projection.status === 'completed' ? 'این هدف تکمیل شده است.' : projection.status === 'on-track' ? `با این روند حدود ${formatSavingsDuration(projection.projectedMonths)} دیگر و تا ${displayJalaliDate(goal.targetDate)} به هدف می‌رسی.` : projection.status === 'overdue' ? 'تاریخ هدف گذشته؛ موعد یا مبلغ ماهانه را ویرایش کن.' : projection.status === 'no-contribution' ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate)} ماهی ${money(projection.requiredMonthlyAmount ?? 0)} کنار بگذار.` : `برای رسیدن به‌موقع، ماهی ${money(monthlyGap)} بیشتر کنار بگذار.`}</p>
+              </>}
         </div>
-        {goal.targetDate && <small className="savings-goal-date"><CalendarDays size={13}/> تاریخ هدف: {goal.targetDate}</small>}
+        {goal.targetDate && <small className="savings-goal-date"><CalendarDays size={13}/> موعد هدف: {displayJalaliDate(goal.targetDate)}</small>}
         <div className="savings-goal-footer"><Button size="small" onClick={() => patchGoal(goal.id, { completed: !goal.completed }, goal.completed ? 'هدف دوباره فعال شد' : 'هدف تکمیل شد')}>{goal.completed ? 'فعال‌کردن دوباره' : 'علامت تکمیل'}</Button>{goal.allocatedAmount > 0 && <Button size="small" type="text" icon={<RotateCcw size={14}/>} onClick={() => patchGoal(goal.id, { allocatedAmount: 0 }, 'مبلغ هدف به پس‌انداز بدون هدف برگشت')}>برگشت به بدون هدف</Button>}</div>
       </Card>;
     })}</div>}
@@ -217,7 +215,7 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
     </Modal>
 
     <Modal open={goalOpen} title={editingGoal ? 'ویرایش هدف' : 'هدف جدید'} footer={null} onCancel={() => !saving && setGoalOpen(false)} destroyOnHidden>
-      <Form layout="vertical" onFinish={saveGoal}><div className="savings-presets">{presets.map(name => <Button key={name} size="small" className={goalName === name ? 'selected' : ''} onClick={() => setGoalName(name)}>{name}</Button>)}</div><Form.Item label="نام هدف"><Input autoFocus value={goalName} onChange={event => setGoalName(event.target.value)} placeholder="مثلاً سفر ژاپن"/></Form.Item><Form.Item label="مبلغ اختصاص‌یافته از پس‌انداز"><InputNumber className="ant-money-input" min={0} max={(editingGoal?.allocatedAmount || 0) + unallocated} precision={0} value={goalAllocation} onChange={setGoalAllocation} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغ نهایی موردنیاز (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} value={goalTarget} onChange={setGoalTarget} addonAfter="تومان"/></Form.Item><Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={goalDate} onChange={setGoalDate}/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<div className="ant-modal-actions">{editingGoal && <Button danger icon={<Trash2 size={15}/>} onClick={() => deleteGoal(editingGoal)}>حذف هدف</Button>}<span className="modal-action-spacer"/><Button onClick={() => setGoalOpen(false)}>انصراف</Button><Button type="primary" htmlType="submit" loading={saving}>ذخیره هدف</Button></div></Form>
+      <Form layout="vertical" onFinish={saveGoal}><div className="savings-presets">{presets.map(name => <Button key={name} size="small" className={goalName === name ? 'selected' : ''} onClick={() => setGoalName(name)}>{name}</Button>)}</div><Form.Item label="نام هدف"><Input autoFocus value={goalName} onChange={event => setGoalName(event.target.value)} placeholder="مثلاً سفر ژاپن"/></Form.Item><Form.Item label="موجودی فعلی این هدف"><InputNumber className="ant-money-input" min={0} max={(editingGoal?.allocatedAmount || 0) + unallocated} precision={0} value={goalAllocation} onChange={setGoalAllocation} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغی که هر ماه کنار می‌گذاری"><InputNumber className="ant-money-input" min={0} precision={0} value={goalMonthlyContribution} onChange={setGoalMonthlyContribution} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغ نهایی موردنیاز (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} value={goalTarget} onChange={setGoalTarget} addonAfter="تومان"/></Form.Item><Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={goalDate} onChange={setGoalDate}/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<div className="ant-modal-actions">{editingGoal && <Button danger icon={<Trash2 size={15}/>} onClick={() => deleteGoal(editingGoal)}>حذف هدف</Button>}<span className="modal-action-spacer"/><Button onClick={() => setGoalOpen(false)}>انصراف</Button><Button type="primary" htmlType="submit" loading={saving}>ذخیره هدف</Button></div></Form>
     </Modal>
 
     <Modal open={balanceOpen} title={balanceMode === 'add' ? 'افزایش پس‌انداز' : 'برداشت از پس‌انداز'} footer={null} onCancel={() => !saving && setBalanceOpen(false)} destroyOnHidden><Form layout="vertical" onFinish={saveBalanceChange}><Segmented block value={balanceMode} onChange={value => { setBalanceMode(value as 'add' | 'withdraw'); setBalanceBucket('unallocated'); setError(''); }} options={[{value:'add',label:'افزایش موجودی'},{value:'withdraw',label:'برداشت'}]}/><Form.Item label="مبلغ"><InputNumber autoFocus className="ant-money-input" min={1} precision={0} value={balanceAmount} onChange={setBalanceAmount} addonAfter="تومان"/></Form.Item><Form.Item label={balanceMode === 'add' ? 'به کدام بخش اضافه شود؟' : 'از کدام بخش کم شود؟'}><Select value={balanceBucket} onChange={setBalanceBucket} options={bucketOptions}/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<div className="ant-modal-actions"><Button onClick={() => setBalanceOpen(false)}>انصراف</Button><Button type="primary" htmlType="submit" loading={saving}>{balanceMode === 'add' ? 'افزودن' : 'ثبت برداشت'}</Button></div></Form></Modal>
@@ -230,10 +228,4 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
 
 function TargetIcon() {
   return <span aria-hidden="true">◎</span>;
-}
-
-function goalMonthLabel(monthKey: string) {
-  const [year, month] = monthKey.split('/').map(Number);
-  if (!year || month < 1 || month > 12) return toPersianDigits(monthKey);
-  return `${jalaliMonthNames[month - 1]} ${toPersianDigits(year)}`;
 }

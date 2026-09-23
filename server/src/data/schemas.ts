@@ -90,6 +90,7 @@ export const savingsGoalInputSchema = z.object({
   id: clientIdSchema,
   name: z.string().trim().min(1).max(120),
   allocatedAmount: moneySchema,
+  monthlyContribution: moneySchema.optional().default('0'),
   targetAmount: positiveMoneySchema.nullable(),
   targetDate: z.iso.date().nullable(),
   completed: z.boolean(),

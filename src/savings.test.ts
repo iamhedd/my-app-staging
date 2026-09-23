@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocatedSavings, createSavingsPortfolio, onboardingSavingsBalance, recentGoalProgress, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot } from './savings';
+import { allocatedSavings, createSavingsPortfolio, onboardingSavingsBalance, recentGoalProgress, savingsGoalProjection, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot } from './savings';
 
 describe('savings portfolio', () => {
   it('treats goals as allocations, not extra assets', () => {
@@ -57,5 +57,29 @@ describe('savings portfolio', () => {
       targetDate: null, completed: false, progressHistory: [],
     };
     expect(recentGoalProgress(goal, '1405/07')).toEqual([{ monthKey: '1405/07', amount: 8_000_000 }]);
+  });
+
+  it('calculates the monthly amount required to reach a dated goal', () => {
+    const projection = savingsGoalProjection({
+      id: 'car', name: 'خرید ماشین', allocatedAmount: 20_000_000, monthlyContribution: 10_000_000,
+      targetAmount: 140_000_000, targetDate: '1406/07/01', completed: false, progressHistory: [],
+    }, new Date(2026, 8, 23));
+
+    expect(projection.monthsUntilTarget).toBe(12);
+    expect(projection.requiredMonthlyAmount).toBe(10_000_000);
+    expect(projection.projectedMonths).toBe(12);
+    expect(projection.pacePercent).toBe(100);
+    expect(projection.status).toBe('on-track');
+  });
+
+  it('marks a monthly plan below the required pace as behind', () => {
+    const projection = savingsGoalProjection({
+      id: 'car', name: 'خرید ماشین', allocatedAmount: 20_000_000, monthlyContribution: 5_000_000,
+      targetAmount: 140_000_000, targetDate: '1406/07/01', completed: false, progressHistory: [],
+    }, new Date(2026, 8, 23));
+
+    expect(projection.projectedMonths).toBe(24);
+    expect(projection.pacePercent).toBe(50);
+    expect(projection.status).toBe('behind');
   });
 });

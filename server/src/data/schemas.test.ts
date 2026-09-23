@@ -58,7 +58,7 @@ test('savings goals are allocations and cannot exceed the real balance', () => {
   const valid = savingsPortfolioInputSchema.safeParse({
     totalAmount: '20000000', monthKey: '1405/07', monthlyTargetAmount: '20000000',
     goals: [
-      { id: 'travel', name: 'سفر', allocatedAmount: '5000000', targetAmount: '15000000', targetDate: null, completed: false, progressHistory: [{ monthKey: '1405/07', amount: '5000000' }] },
+      { id: 'travel', name: 'سفر', allocatedAmount: '5000000', monthlyContribution: '2000000', targetAmount: '15000000', targetDate: null, completed: false, progressHistory: [{ monthKey: '1405/07', amount: '5000000' }] },
       { id: 'laptop', name: 'لپ‌تاپ', allocatedAmount: '4000000', targetAmount: null, targetDate: '2027-03-20', completed: false, progressHistory: [] },
     ],
   });

@@ -10,7 +10,7 @@ import {
 import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { displayJalaliDate, monthFromOffset, parseJalaliDate } from './dateUtils';
-import { createSavingsPortfolio, onboardingSavingsBalance, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { createSavingsPortfolio, formatSavingsDuration, onboardingSavingsBalance, savingsGoalProjection, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
 import JalaliDatePicker from './JalaliDatePicker';
 
 type Props = {
@@ -137,7 +137,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     const cleanName = name.trim();
     if (!cleanName) return setNewSavingsGoalError('نام هدف را وارد کنید');
     if (savingsGoals.some(goal => goal.name.trim().toLocaleLowerCase('fa') === cleanName.toLocaleLowerCase('fa'))) return setNewSavingsGoalError('این هدف قبلاً اضافه شده است');
-    const goal = { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] } satisfies SavingsGoal;
+    const goal = { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, monthlyContribution: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] } satisfies SavingsGoal;
     setSavingsGoals(goals => [...goals, goal]);
     setNewSavingsGoal('');
     setNewSavingsGoalError('');
@@ -168,6 +168,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     if (savingsGoalChoice === 'no') return null;
     if (savingsGoals.some(goal => !goal.name.trim())) return 'نام همه هدف‌ها را مشخص کن.';
     if (savingsGoals.some(goal => !Number.isSafeInteger(goal.allocatedAmount) || goal.allocatedAmount < 0)) return 'مبلغ اختصاص‌یافته هدف معتبر نیست.';
+    if (savingsGoals.some(goal => !Number.isSafeInteger(goal.monthlyContribution ?? 0) || (goal.monthlyContribution ?? 0) < 0)) return 'مبلغ ماهانه هدف معتبر نیست.';
     if (savingsGoals.some(goal => goal.targetAmount !== null && (!Number.isSafeInteger(goal.targetAmount) || goal.targetAmount <= 0))) return 'مبلغ نهایی هدف باید بیشتر از صفر باشد.';
     if (new Set(savingsGoals.map(goal => goal.name.trim().toLocaleLowerCase('fa'))).size !== savingsGoals.length) return 'نام هدف‌ها نباید تکراری باشد.';
     if (savingsGoals.some(goal => goal.targetDate && !parseJalaliDate(goal.targetDate))) return 'تاریخ هدف را به شکل ۱۴۰۶/۰۱/۳۱ وارد کن.';
@@ -301,15 +302,19 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
             </Card>
 
             <div className="savings-goal-summary-list">{savingsGoals.map(goal => {
-              const progress = goal.targetAmount ? Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100)) : 0;
+              const projection = savingsGoalProjection(goal);
               const missingTargetAmount = !goal.targetAmount;
               const missingTargetDate = !goal.targetDate;
               const missingDetails = missingTargetAmount || missingTargetDate;
               const availableForGoal = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal + goal.allocatedAmount);
               return <Card key={goal.id} className="savings-goal-summary-card" variant="borderless">
                 <div className="goal-summary-main"><span className="goal-summary-emoji">{savingsGoalEmoji(goal.name)}</span><div className="goal-summary-copy"><div className="goal-summary-title"><strong>{goal.name}</strong><Button type="text" icon={<Pencil size={15}/>} aria-label={`ویرایش ${goal.name}`} onClick={() => setEditingSavingsGoalId(goal.id)}/></div>{missingDetails ? <div className="goal-summary-incomplete"><span>هدف هنوز کامل نشده</span><Button type="link" onClick={() => setEditingSavingsGoalId(goal.id)}>{missingTargetAmount && missingTargetDate ? 'تکمیل مبلغ و تاریخ' : missingTargetAmount ? 'تکمیل مبلغ هدف' : 'تکمیل تاریخ هدف'}</Button></div> : <small>هدف {formatCompactToman(goal.targetAmount!)} · تا {displayJalaliDate(goal.targetDate!)}</small>}</div></div>
-                <div className="goal-summary-allocation-editor"><label htmlFor={`goal-allocation-${goal.id}`}>مبلغ تخصیصی این ماه</label><InputNumber id={`goal-allocation-${goal.id}`} aria-label={`مبلغ تخصیصی ${goal.name}`} className="goal-allocation-input" min={0} max={availableForGoal} precision={0} controls={false} value={goal.allocatedAmount} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/><small>تا {formatCompactToman(availableForGoal)} قابل تخصیص است.</small></div>
-                {goal.targetAmount ? <div className="goal-summary-progress"><div><span>سهم این ماه از هدف</span><small>{new Intl.NumberFormat('fa-IR').format(progress)}٪</small></div><Progress percent={progress} showInfo={false}/></div> : null}
+                <div className="goal-summary-allocation-editor"><label htmlFor={`goal-allocation-${goal.id}`}>مبلغ ماهانه برای این هدف</label><InputNumber id={`goal-allocation-${goal.id}`} aria-label={`مبلغ ماهانه ${goal.name}`} className="goal-allocation-input" min={0} max={availableForGoal} precision={0} controls={false} value={goal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0, monthlyContribution: value || 0 })} addonAfter="تومان"/><small>این مبلغ برای ماه جاری هم اختصاص می‌یابد.</small></div>
+                {!missingDetails && <div className={`goal-plan-preview ${projection.status}`}>
+                  <div className="goal-plan-preview-heading"><span>سرعت رسیدن به هدف</span><b>{projection.status === 'on-track' ? 'طبق برنامه' : projection.status === 'behind' ? 'عقب‌تر از برنامه' : 'مبلغ ماهانه لازم است'}</b></div>
+                  <Progress percent={Math.min(100, projection.pacePercent ?? 0)} showInfo={false} status={projection.status === 'behind' ? 'exception' : 'normal'}/>
+                  <small>{projection.requiredMonthlyAmount ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate!)} ماهی ${formatCompactToman(projection.requiredMonthlyAmount)} لازم است.` : ''}{projection.projectedMonths ? ` با برنامه فعلی حدود ${formatSavingsDuration(projection.projectedMonths)} زمان می‌برد.` : ''}</small>
+                </div>}
               </Card>;
             })}</div>
 
@@ -385,6 +390,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
       {editingSavingsGoal && <Form component="div" layout="vertical">
         <Form.Item label="نام هدف"><Input value={editingSavingsGoal.name} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { name: event.target.value })}/></Form.Item>
         <Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
+        <Form.Item label="مبلغ ماهانه"><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { monthlyContribution: value || 0 })} addonAfter="تومان"/></Form.Item>
         <Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={editingSavingsGoal.targetDate || ''} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetDate: value || null })}/></Form.Item>
         <div className="savings-goal-editor-actions"><Button danger type="text" icon={<Trash2 size={15}/>} onClick={() => { setSavingsGoals(goals => goals.filter(goal => goal.id !== editingSavingsGoal.id)); setEditingSavingsGoalId(null); }}>حذف هدف</Button><Button type="primary" onClick={() => setEditingSavingsGoalId(null)}>تمام</Button></div>
       </Form>}

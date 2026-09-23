@@ -94,6 +94,7 @@ function mapSavingsPortfolio(account: DatabaseRow | undefined, goals: DatabaseRo
       id: String(row.client_id),
       name: String(row.name),
       allocatedAmount: String(row.allocated_amount),
+      monthlyContribution: String(row.monthly_contribution ?? 0),
       targetAmount: row.target_amount == null ? null : String(row.target_amount),
       targetDate: row.target_date == null ? null : String(row.target_date),
       completed: Boolean(row.completed),
@@ -340,9 +341,9 @@ export async function saveSavingsPortfolio(userId: string, input: SavingsPortfol
       const progressHistory = goal.progressHistory ?? progressByGoal.get(goal.id) ?? [];
       await client.query(
         `insert into savings_goals
-         (user_id, client_id, name, allocated_amount, target_amount, target_date, completed, progress_history, sort_order)
-         values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
-        [userId, goal.id, goal.name, goal.allocatedAmount, goal.targetAmount, goal.targetDate, goal.completed, JSON.stringify(progressHistory), index],
+         (user_id, client_id, name, allocated_amount, monthly_contribution, target_amount, target_date, completed, progress_history, sort_order)
+         values ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10)`,
+        [userId, goal.id, goal.name, goal.allocatedAmount, goal.monthlyContribution, goal.targetAmount, goal.targetDate, goal.completed, JSON.stringify(progressHistory), index],
       );
     }
     const goals = await client.query('select * from savings_goals where user_id = $1 order by sort_order, created_at', [userId]);

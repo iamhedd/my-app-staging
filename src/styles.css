@@ -1300,3 +1300,42 @@ body{color:var(--ink)}
   .savings-add-goal-presets{grid-template-columns:1fr}
   .savings-add-goal-input .ant-btn{padding-inline:10px}
 }
+
+/* Goal timelines: the bar measures whether the monthly plan can meet the due date. */
+.savings-goal-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.savings-goal-amount small{font-size:8px;color:#707070}
+.goal-schedule{display:flex;flex-direction:column;gap:9px;padding:12px;border:1px solid #EFEFEF;border-radius:13px;background:#FAFAFA}
+.goal-schedule-title{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.goal-schedule-title>strong{font-size:9px}
+.goal-schedule-title .ant-tag{margin:0;font-size:7px}
+.goal-schedule-metrics{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.goal-schedule-metrics>div{display:flex;flex-direction:column;gap:3px;min-width:0;padding:8px 9px;border-radius:9px;background:#fff}
+.goal-schedule-metrics span{font-size:7px;color:#707070}
+.goal-schedule-metrics b{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.goal-schedule-bar-label{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:8px;color:#707070}
+.goal-schedule-bar-label b{color:#BE5275}
+.savings-goal-card .goal-schedule .ant-progress{margin:0;line-height:1}
+.goal-schedule p{margin:0;font-size:8px;line-height:1.9;color:#555}
+.goal-schedule.on-track{background:#F5FBF7;border-color:#D9EFE0}
+.goal-schedule.behind,.goal-schedule.no-contribution,.goal-schedule.overdue{background:#FFF8F5;border-color:#F6DDD2}
+.goal-schedule-setup{width:100%;padding:9px 10px;border:1px dashed #D5D5D5;border-radius:9px;background:#fff;color:#BE5275;font:inherit;font-size:8px;font-weight:700;cursor:pointer}
+.goal-schedule-estimate{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.goal-schedule-estimate span{font-size:8px;line-height:1.9;color:#555}
+.goal-schedule-estimate .ant-btn{height:auto;padding:0;font-size:8px}
+.goal-plan-preview{display:flex;flex-direction:column;gap:6px;margin-top:9px;padding:10px 12px;border-radius:11px;background:var(--neutral-soft)}
+.goal-plan-preview-heading{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.goal-plan-preview-heading span,.goal-plan-preview-heading b{font-size:8px}
+.goal-plan-preview-heading b{color:var(--brand-accent-dark)}
+.goal-plan-preview .ant-progress{margin:0}
+.goal-plan-preview>small{font-size:8px;line-height:1.9;color:var(--muted)}
+.goal-plan-preview.on-track{background:#F2FAF5}
+.goal-plan-preview.behind,.goal-plan-preview.no-contribution{background:#FFF7F4}
+
+@media(max-width:650px){
+  .savings-goal-grid{grid-template-columns:1fr}
+  .goal-schedule-metrics{grid-template-columns:1fr 1fr}
+}
+
+@media(max-width:340px){
+  .goal-schedule-metrics{grid-template-columns:1fr}
+}
