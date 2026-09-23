@@ -1320,6 +1320,7 @@ body{color:var(--ink)}
 .goal-schedule.behind,.goal-schedule.no-contribution,.goal-schedule.overdue{background:#FFF8F5;border-color:#F6DDD2}
 .goal-schedule-setup{width:100%;padding:9px 10px;border:1px dashed #D5D5D5;border-radius:9px;background:#fff;color:#BE5275;font:inherit;font-size:8px;font-weight:700;cursor:pointer}
 .goal-schedule-estimate{display:flex;flex-direction:column;align-items:flex-start;gap:3px}
+.goal-schedule-estimate .goal-schedule-bar-label,.goal-schedule-estimate .ant-progress{width:100%}
 .goal-schedule-estimate span{font-size:8px;line-height:1.9;color:#555}
 .goal-schedule-estimate .ant-btn{height:auto;padding:0;font-size:8px}
 .goal-plan-preview{display:flex;flex-direction:column;gap:6px;margin-top:9px;padding:10px 12px;border-radius:11px;background:var(--neutral-soft)}
@@ -1330,6 +1331,7 @@ body{color:var(--ink)}
 .goal-plan-preview>small{font-size:8px;line-height:1.9;color:var(--muted)}
 .goal-plan-preview.on-track{background:#F2FAF5}
 .goal-plan-preview.behind,.goal-plan-preview.no-contribution{background:#FFF7F4}
+.goal-plan-preview.incomplete{background:#F7F7F7}
 
 @media(max-width:650px){
   .savings-goal-grid{grid-template-columns:1fr}

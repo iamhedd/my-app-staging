@@ -61,7 +61,6 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const savingsAllocationTotal = savingsGoals.reduce((sum, goal) => sum + goal.allocatedAmount, 0);
   const onboardingSavingsTotal = onboardingSavingsBalance(initialSavingsPortfolio?.totalAmount ?? 0, savingsAmount);
   const unallocatedSavingsAmount = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal);
-  const savingsAllocationPercent = onboardingSavingsTotal > 0 ? Math.round(savingsAllocationTotal / onboardingSavingsTotal * 100) : 0;
   const editingSavingsGoal = savingsGoals.find(goal => goal.id === editingSavingsGoalId) ?? null;
 
   const changeIncome = (value: string) => {
@@ -296,8 +295,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
           </div> : <>
             <Card className={`savings-allocation-overview ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`} variant="borderless">
               <div className="allocation-overview-primary"><strong>{formatCompactToman(unallocatedSavingsAmount)}</strong><span>باقی مانده</span></div>
-              <div className="allocation-overview-meta"><span>{formatCompactToman(savingsAllocationTotal)} تخصیص داده شده</span><b>{new Intl.NumberFormat('fa-IR').format(savingsAllocationPercent)}٪</b></div>
-              <Progress percent={Math.min(100, savingsAllocationPercent)} showInfo={false} status={savingsAllocationTotal > onboardingSavingsTotal ? 'exception' : 'normal'}/>
+              <div className="allocation-overview-meta"><span>{formatCompactToman(savingsAllocationTotal)} تخصیص داده شده</span><b>{savingsGoals.length ? `${new Intl.NumberFormat('fa-IR').format(savingsGoals.length)} هدف` : 'بدون هدف'}</b></div>
               {savingsAllocationTotal > onboardingSavingsTotal && <p>{formatCompactToman(savingsAllocationTotal - onboardingSavingsTotal)} بیشتر از پس‌انداز این ماه وارد شده است.</p>}
             </Card>
 
@@ -310,11 +308,11 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
               return <Card key={goal.id} className="savings-goal-summary-card" variant="borderless">
                 <div className="goal-summary-main"><span className="goal-summary-emoji">{savingsGoalEmoji(goal.name)}</span><div className="goal-summary-copy"><div className="goal-summary-title"><strong>{goal.name}</strong><Button type="text" icon={<Pencil size={15}/>} aria-label={`ویرایش ${goal.name}`} onClick={() => setEditingSavingsGoalId(goal.id)}/></div>{missingDetails ? <div className="goal-summary-incomplete"><span>هدف هنوز کامل نشده</span><Button type="link" onClick={() => setEditingSavingsGoalId(goal.id)}>{missingTargetAmount && missingTargetDate ? 'تکمیل مبلغ و تاریخ' : missingTargetAmount ? 'تکمیل مبلغ هدف' : 'تکمیل تاریخ هدف'}</Button></div> : <small>هدف {formatCompactToman(goal.targetAmount!)} · تا {displayJalaliDate(goal.targetDate!)}</small>}</div></div>
                 <div className="goal-summary-allocation-editor"><label htmlFor={`goal-allocation-${goal.id}`}>مبلغ ماهانه برای این هدف</label><InputNumber id={`goal-allocation-${goal.id}`} aria-label={`مبلغ ماهانه ${goal.name}`} className="goal-allocation-input" min={0} max={availableForGoal} precision={0} controls={false} value={goal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0, monthlyContribution: value || 0 })} addonAfter="تومان"/><small>این مبلغ برای ماه جاری هم اختصاص می‌یابد.</small></div>
-                {!missingDetails && <div className={`goal-plan-preview ${projection.status}`}>
-                  <div className="goal-plan-preview-heading"><span>سرعت رسیدن به هدف</span><b>{projection.status === 'on-track' ? 'طبق برنامه' : projection.status === 'behind' ? 'عقب‌تر از برنامه' : 'مبلغ ماهانه لازم است'}</b></div>
+                <div className={`goal-plan-preview ${missingDetails ? 'incomplete' : projection.status}`}>
+                  <div className="goal-plan-preview-heading"><span>سرعت رسیدن به هدف</span><b>{missingDetails ? 'اطلاعات ناقص' : projection.status === 'on-track' ? 'طبق برنامه' : projection.status === 'behind' ? 'عقب‌تر از برنامه' : 'مبلغ ماهانه لازم است'}</b></div>
                   <Progress percent={Math.min(100, projection.pacePercent ?? 0)} showInfo={false} status={projection.status === 'behind' ? 'exception' : 'normal'}/>
-                  <small>{projection.requiredMonthlyAmount ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate!)} ماهی ${formatCompactToman(projection.requiredMonthlyAmount)} لازم است.` : ''}{projection.projectedMonths ? ` با برنامه فعلی حدود ${formatSavingsDuration(projection.projectedMonths)} زمان می‌برد.` : ''}</small>
-                </div>}
+                  <small>{missingDetails ? 'برای محاسبه سرعت پیشرفت، مبلغ نهایی و تاریخ هدف را تکمیل کن.' : <>{projection.requiredMonthlyAmount ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate!)} ماهی ${formatCompactToman(projection.requiredMonthlyAmount)} لازم است.` : ''}{projection.projectedMonths ? ` با برنامه فعلی حدود ${formatSavingsDuration(projection.projectedMonths)} زمان می‌برد.` : ''}</>}</small>
+                </div>
               </Card>;
             })}</div>
 
@@ -389,7 +387,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     <Modal className="savings-goal-editor-modal" open={Boolean(editingSavingsGoal)} title={editingSavingsGoal ? `ویرایش ${editingSavingsGoal.name}` : 'ویرایش هدف'} footer={null} destroyOnHidden onCancel={() => setEditingSavingsGoalId(null)}>
       {editingSavingsGoal && <Form component="div" layout="vertical">
         <Form.Item label="نام هدف"><Input value={editingSavingsGoal.name} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { name: event.target.value })}/></Form.Item>
-        <Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
+        <Form.Item label="مبلغ نهایی (اختیاری)" extra={editingSavingsGoal.targetAmount ? `معادل ${formatCompactToman(editingSavingsGoal.targetAmount)}` : 'مبلغ را به تومان وارد کن.'}><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
         <Form.Item label="مبلغ ماهانه"><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { monthlyContribution: value || 0 })} addonAfter="تومان"/></Form.Item>
         <Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={editingSavingsGoal.targetDate || ''} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetDate: value || null })}/></Form.Item>
         <div className="savings-goal-editor-actions"><Button danger type="text" icon={<Trash2 size={15}/>} onClick={() => { setSavingsGoals(goals => goals.filter(goal => goal.id !== editingSavingsGoal.id)); setEditingSavingsGoalId(null); }}>حذف هدف</Button><Button type="primary" onClick={() => setEditingSavingsGoalId(null)}>تمام</Button></div>
