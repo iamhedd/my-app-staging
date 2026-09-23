@@ -1341,3 +1341,37 @@ body{color:var(--ink)}
 @media(max-width:340px){
   .goal-schedule-metrics{grid-template-columns:1fr}
 }
+
+/* Savings goal builder: compact hierarchy with one clear action per card. */
+.savings-goal-flow{gap:12px}
+.savings-allocation-overview.ant-card{border:1px solid var(--border);border-radius:14px;background:#fff}
+.savings-allocation-overview>.ant-card-body{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:12px 15px}
+.allocation-overview-primary{min-width:0}
+.allocation-overview-primary strong{font-size:17px}
+.allocation-overview-meta{flex:0 0 auto;display:flex;align-items:flex-end;flex-direction:column;gap:2px;margin:0}
+.allocation-overview-meta span{font-size:9px}
+.allocation-overview-meta b{font-size:9px;padding:3px 8px;border-radius:999px;background:var(--brand-tint)}
+.savings-allocation-overview> .ant-card-body>p{width:100%;margin:0}
+.savings-allocation-overview.over>.ant-card-body{flex-wrap:wrap}
+.savings-goal-summary-list{gap:10px}
+.savings-goal-summary-card.ant-card{border-radius:15px;background:#fff;box-shadow:0 6px 20px #17171708}
+.savings-goal-summary-card>.ant-card-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(235px,.85fr);grid-template-areas:"main plan" "amount plan";gap:10px 16px;padding:15px}
+.goal-summary-main{grid-area:main;grid-template-columns:38px minmax(0,1fr);align-items:center}
+.goal-summary-emoji{width:38px;height:38px;border-radius:11px;font-size:18px}
+.goal-summary-allocation-editor{grid-area:amount;grid-template-columns:1fr;margin:0;padding-top:10px;gap:6px;border-top:1px solid var(--border)}
+.goal-summary-allocation-editor>small{grid-column:1}
+.goal-plan-preview{grid-area:plan;align-self:stretch;justify-content:center;margin:0;padding:11px 13px;border:1px solid transparent}
+.goal-plan-preview.on-track{border-color:#D9EFE0}
+.goal-plan-preview.behind,.goal-plan-preview.no-contribution{border-color:#F6DDD2}
+.goal-plan-preview.incomplete{border-color:var(--border)}
+.savings-add-goal-box{padding:13px 15px;border-radius:15px;background:#FAFAFA}
+.savings-goal-editor-modal .ant-form-item-extra,.ant-modal .ant-form-item-extra{padding-top:4px;font-size:9px;color:var(--muted)}
+.ant-input-number-group-addon{font-size:10px;color:var(--muted);background:#F6F6F6}
+
+@media(max-width:650px){
+  .savings-allocation-overview>.ant-card-body{padding:11px 12px}
+  .allocation-overview-primary strong{font-size:15px}
+  .savings-goal-summary-card>.ant-card-body{grid-template-columns:1fr;grid-template-areas:"main" "amount" "plan";gap:9px;padding:12px}
+  .goal-summary-allocation-editor{margin:0;padding-top:9px}
+  .goal-plan-preview{min-height:84px}
+}
