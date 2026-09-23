@@ -262,7 +262,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
           <div className="savings-goal-flow-heading">
             <div className="savings-goal-flow-kicker"><span>مرحله دوم</span><Tag bordered={false}>اختیاری</Tag></div>
             <h1>{savingsGoalStage === 'builder' ? 'هدف‌هات رو بساز' : 'برای ذخیره‌هات هدف بذار'}</h1>
-            <p>{savingsGoalStage === 'builder' ? 'برای هر هدف مشخص کن چقدر از ذخیرهی ماهانه‌ات بهش برسه.' : <>ذخیرهی این ماهت <strong>{money(onboardingSavingsTotal)}</strong>ـه. می‌تونی بین چند تا هدف تقسیمش کنی؛ هدف‌ها فقط برچسبن و پول اضافه‌ای حساب نمی‌شن.</>}</p>
+            <p>{savingsGoalStage === 'builder' ? 'برای هر هدف مشخص کن چقدر از ذخیره‌ی ماهانه‌ات بهش برسه.' : <>ذخیره‌ی این ماهت <strong>{money(onboardingSavingsTotal)}</strong>ـه. می‌تونی بین چند تا هدف تقسیمش کنی؛ هدف‌ها فقط برچسبن و پول اضافه‌ای حساب نمی‌شن.</>}</p>
           </div>
 
           {savingsGoalStage === 'choice' ? <div className="savings-goal-choice-grid">
@@ -274,7 +274,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
             </Button>
           </div> : <>
             <Card className={`savings-allocation-overview ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`} variant="borderless">
-              <div className="allocation-overview-top"><span>تقسیم‌شده از ذخیرهی ماه</span><strong>{money(savingsAllocationTotal)} <i>/ {money(onboardingSavingsTotal)}</i></strong></div>
+              <div className="allocation-overview-top"><span>تقسیم‌شده از ذخیره‌ی ماه</span><strong>{money(savingsAllocationTotal)} <i>/ {money(onboardingSavingsTotal)}</i></strong></div>
               <Progress percent={Math.min(100, savingsAllocationPercent)} showInfo={false} status={savingsAllocationTotal > onboardingSavingsTotal ? 'exception' : 'normal'}/>
               <p>{money(unallocatedSavingsAmount)} هنوز تقسیم نشده</p>
             </Card>
