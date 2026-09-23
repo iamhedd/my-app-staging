@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Trash2, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Input, InputNumber, Popover, Progress, Segmented, Switch } from 'antd';
+import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, PiggyBank, Plus, Smile, Target, Trash2, WalletCards } from 'lucide-react';
+import { Alert, Button, Card, Form, Input, InputNumber, Popover, Progress, Segmented, Slider, Statistic, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -28,7 +28,6 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const [monthlyIncome, setMonthlyIncome] = useState(initialSetup?.monthlyIncome ?? 0);
   const [incomeInput, setIncomeInput] = useState(initialSetup?.monthlyIncome ? String(initialSetup.monthlyIncome) : '');
   const [savingsPercentBps, setSavingsPercentBps] = useState(initialSetup?.savingsPercentBps ?? 0);
-  const [savingsAmountInput, setSavingsAmountInput] = useState(initialSetup ? String(calculateSavingsAmount(initialSetup.monthlyIncome, initialSetup.savingsPercentBps, initialSetup.savingsTargetAmount)) : '');
   const [categories, setCategories] = useState<SetupCategory[]>(initialSetup?.categories ?? createDefaultCategories());
   const [allocationInputs, setAllocationInputs] = useState<Record<string, string>>(() => Object.fromEntries((initialSetup?.categories ?? createDefaultCategories()).map(category => [category.id, category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100)])));
   const [newCategory, setNewCategory] = useState('');
@@ -46,8 +45,8 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   });
   const [savingsEnabled, setSavingsEnabled] = useState(savingsPercentBps > 0);
 
-  const enteredSavingsAmount = parseNonNegativeInteger(savingsAmountInput);
-  const savingsAmount = savingsEnabled && enteredSavingsAmount !== null ? enteredSavingsAmount : 0;
+  const savingsPercent = savingsPercentBps / 100;
+  const savingsAmount = savingsEnabled ? calculateSavingsAmount(monthlyIncome, savingsPercentBps) : 0;
   const spendableAmount = calculateSpendableAmount(monthlyIncome, savingsPercentBps, savingsAmount);
   const calculatedCategories = useMemo(() => calculateCategoryAmounts(spendableAmount, categories), [spendableAmount, categories]);
   const allocatedAmount = calculatedCategories.reduce((sum, category) => sum + category.amount, 0);
@@ -57,34 +56,29 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const savingsAllocationTotal = savingsGoals.reduce((sum, goal) => sum + goal.allocatedAmount, 0);
   const onboardingSavingsTotal = onboardingSavingsBalance(initialSavingsPortfolio?.totalAmount ?? 0, savingsAmount);
   const unallocatedSavingsAmount = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal);
+  const savingsAllocationPercent = onboardingSavingsTotal > 0 ? Math.round(savingsAllocationTotal / onboardingSavingsTotal * 100) : 0;
 
   const changeIncome = (value: string) => {
     setIncomeInput(value);
     const parsed = parsePositiveInteger(value);
     setMonthlyIncome(parsed ?? 0);
-    const saving = parseNonNegativeInteger(savingsAmountInput);
-    if (parsed && saving !== null && saving <= parsed) setSavingsPercentBps(Math.round(saving / parsed * 10000));
     if (parsed) setError('');
   };
 
-  const changeSavingsAmount = (value: string) => {
-    setSavingsAmountInput(value);
-    const parsed = parseNonNegativeInteger(value);
-    if (parsed !== null && monthlyIncome > 0 && parsed <= monthlyIncome) setSavingsPercentBps(Math.round(parsed / monthlyIncome * 10000));
+  const changeSavingsPercent = (value: number | null) => {
+    const percent = Math.min(100, Math.max(0, value ?? 0));
+    setSavingsPercentBps(Math.round(percent * 100));
     setError('');
   };
 
-  const lastSavingsAmountRef = useRef(savingsAmount || Math.round(monthlyIncome * 0.1));
+  const lastSavingsPercentRef = useRef(savingsPercentBps || 1000);
   const toggleSavings = (enabled: boolean) => {
     setSavingsEnabled(enabled);
     if (enabled) {
-      const restored = lastSavingsAmountRef.current || Math.round(monthlyIncome * 0.1);
-      setSavingsAmountInput(String(restored));
-      setSavingsPercentBps(monthlyIncome > 0 ? Math.round(restored / monthlyIncome * 10000) : 0);
+      setSavingsPercentBps(lastSavingsPercentRef.current || 1000);
     } else {
-      if (savingsAmount > 0) lastSavingsAmountRef.current = savingsAmount;
+      if (savingsPercentBps > 0) lastSavingsPercentRef.current = savingsPercentBps;
       setSavingsPercentBps(0);
-      setSavingsAmountInput('0');
     }
     setError('');
   };
@@ -161,8 +155,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const nextStep = () => {
     if (step === 1) {
       if (!monthlyIncome) return setError('درآمد ماهانه باید یک عدد مثبت باشد.');
-      const enteredSavings = parseNonNegativeInteger(savingsAmountInput);
-      if (savingsEnabled && (enteredSavings === null || enteredSavings > monthlyIncome)) return setError('مبلغ پس‌انداز باید بین صفر و درآمد ماهانه باشد.');
+      if (savingsEnabled && (savingsPercentBps <= 0 || savingsPercentBps > 10000)) return setError('درصد پس‌انداز باید بین یک تا صد باشد.');
       setError('');
       return setStep(savingsAmount > 0 ? 2 : 3);
     }
@@ -229,38 +222,37 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
 
     <section className="onboarding-shell">
       <Card className="onboarding-card" variant="borderless">
-        {step === 1 && <section className="onboarding-step income-step">
-          <div className="step-icon"><WalletCards size={26}/></div>
-          <span className="step-kicker">مرحله اول</span>
-          <h1>درآمد ماهانه‌ات چقدر است؟</h1>
-          <p>درآمدت را بین پس‌انداز و هزینه‌های ماهانه تقسیم کن. بودجه‌ی دسته‌ها فقط از مبلغ قابل‌هزینه محاسبه می‌شود.</p>
-          <label className="income-label" htmlFor="monthly-income">درآمد ماهانه</label>
-          <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" aria-describedby="income-hint" prefix={<CircleDollarSign size={21}/>} suffix="تومان"/>
-          <div id="income-hint" className="income-preview">{incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${money(parsePositiveInteger(incomeInput)!)} در ماه` : 'درآمد ماهانه‌ات را به تومان وارد کن.'}</div>
-          <div className="savings-toggle-row"><span>می‌خوای بخشی از درآمدت رو پس‌انداز کنی؟</span><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
-          {savingsEnabled ? <>
-            <label className="income-label" htmlFor="savings-amount">این ماه چقدر می‌خوای پس‌انداز کنی؟</label>
-            <Input className="income-input" id="savings-amount" inputMode="numeric" value={savingsAmountInput} onChange={event => changeSavingsAmount(event.target.value)} aria-describedby="savings-hint" suffix="تومان"/>
-            <div id="savings-hint" className="income-preview">معادل {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪ از درآمد ماهانه</div>
-          </> : <div className="income-preview">فعلاً بدون پس‌انداز ادامه می‌دی؛ هر وقت خواستی می‌تونی از تنظیمات دوباره فعالش کنی.</div>}
-          <div className="income-split"><div><span>برای پس‌انداز · {new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercentBps / 100)}٪</span><strong>{money(savingsAmount)}</strong></div><div><span>قابل‌هزینه</span><strong>{money(spendableAmount)}</strong></div></div>
+        {step === 1 && <section className="onboarding-step income-step ant-savings-setup-step">
+          <div className="onboarding-section-title"><div className="step-icon"><WalletCards size={23}/></div><div><span className="step-kicker">مرحله اول</span><h1>درآمد و پس‌انداز ماهانه</h1><p>اول درآمدت را بنویس، بعد درصدی را که می‌خواهی کنار بگذاری مشخص کن.</p></div></div>
+          <Form component="div" layout="vertical" className="onboarding-ant-form">
+            <Form.Item label="درآمد ماهانه" extra={incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${money(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به تومان وارد کن.'}>
+              <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="تومان"/>
+            </Form.Item>
+            <Card size="small" className="savings-percentage-card">
+              <div className="savings-toggle-row"><div><PiggyBank size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
+              {savingsEnabled ? <div className="savings-percent-editor">
+                <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><InputNumber aria-label="درصد پس انداز" min={1} max={100} step={0.5} precision={2} controls={false} value={savingsPercent} onChange={changeSavingsPercent} addonAfter="٪"/></div>
+                <Slider min={1} max={100} step={0.5} value={savingsPercent} onChange={changeSavingsPercent} tooltip={{ formatter: value => `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(value || 0)}٪` }}/>
+                <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{money(savingsAmount)}</strong> می‌شود.</span>}/>
+              </div> : <Alert type="info" showIcon message="فعلاً بدون پس‌انداز ادامه می‌دهی؛ بعداً از تنظیمات می‌توانی فعالش کنی."/>}
+            </Card>
+            <div className="onboarding-income-summary"><Card size="small"><Statistic title={`پس‌انداز · ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪`} value={savingsAmount} formatter={() => money(savingsAmount)}/></Card><Card size="small"><Statistic title="مبلغ قابل‌هزینه" value={spendableAmount} formatter={() => money(spendableAmount)}/></Card></div>
+          </Form>
         </section>}
 
-        {step === 2 && <section className="onboarding-step savings-goals-step">
-          <span className="step-kicker">مرحله دوم · اختیاری</span>
-          <h1>می‌خوای پس‌اندازت رو هدف‌بندی کنی؟</h1>
-          <p>هدف‌ها فقط مشخص می‌کنند هر بخش از همین {money(onboardingSavingsTotal)} برای چه چیزی کنار گذاشته شده است.</p>
-          <Segmented block value={savingsGoalChoice || undefined} onChange={value => { setSavingsGoalChoice(value as 'yes' | 'no'); setError(''); }} options={[{value:'yes',label:'بله، هدف‌بندی کنم'},{value:'no',label:'فعلاً نه'}]}/>
+        {step === 2 && <section className="onboarding-step savings-goals-step ant-goals-setup-step">
+          <div className="onboarding-section-title"><div className="step-icon"><Target size={23}/></div><div><span className="step-kicker">مرحله دوم · اختیاری</span><h1>پس‌اندازت را هدف‌بندی می‌کنی؟</h1><p>هدف‌ها فقط تقسیم‌بندی همین پول هستند و دوباره در دارایی‌ات حساب نمی‌شوند.</p></div></div>
+          <Card size="small" className="savings-choice-card"><span>می‌خواهی {money(onboardingSavingsTotal)} را بین چند هدف تقسیم کنی؟</span><Segmented block size="large" value={savingsGoalChoice || undefined} onChange={value => { setSavingsGoalChoice(value as 'yes' | 'no'); setError(''); }} options={[{value:'yes',label:'بله، هدف‌بندی می‌کنم'},{value:'no',label:'فعلاً بدون هدف'}]}/></Card>
           {savingsGoalChoice === 'yes' && <>
-            <div className={`onboarding-savings-summary ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`}><div><span>کل پس‌انداز</span><strong>{money(onboardingSavingsTotal)}</strong></div><div><span>هدف‌بندی‌شده</span><strong>{money(savingsAllocationTotal)}</strong></div><div><span>بدون هدف</span><strong>{money(unallocatedSavingsAmount)}</strong></div></div>
-            <div className="onboarding-goal-presets">{savingsGoalPresets.map(name => <Button key={name} size="small" disabled={savingsGoals.some(goal => goal.name === name)} onClick={() => addSavingsGoal(name)}>{name}</Button>)}</div>
-            <div className="onboarding-goal-list">{savingsGoals.map(goal => <Card key={goal.id} className="onboarding-goal-card" variant="borderless">
-              <div className="onboarding-goal-name"><Input value={goal.name} onChange={event => updateSavingsGoal(goal.id, { name: event.target.value })} placeholder="نام هدف"/><Button type="text" danger icon={<Trash2 size={16}/>} aria-label={`حذف ${goal.name}`} onClick={() => setSavingsGoals(goals => goals.filter(item => item.id !== goal.id))}/></div>
-              <div className="onboarding-goal-fields"><label>مبلغ اختصاص‌یافته<InputNumber min={0} precision={0} value={goal.allocatedAmount} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></label><label>مبلغ نهایی (اختیاری)<InputNumber min={1} precision={0} value={goal.targetAmount} onChange={value => updateSavingsGoal(goal.id, { targetAmount: value })} addonAfter="تومان"/></label><label>تاریخ هدف (اختیاری)<Input inputMode="numeric" value={goal.targetDate || ''} onChange={event => updateSavingsGoal(goal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></label></div>
+            <Card size="small" className={`onboarding-savings-summary ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`}><div className="savings-summary-head"><span>وضعیت تخصیص</span><strong>{new Intl.NumberFormat('fa-IR').format(savingsAllocationPercent)}٪</strong></div><Progress percent={Math.min(100, savingsAllocationPercent)} showInfo={false} status={savingsAllocationTotal > onboardingSavingsTotal ? 'exception' : 'active'}/><div className="savings-summary-stats"><Statistic title="کل پس‌انداز" value={onboardingSavingsTotal} formatter={() => money(onboardingSavingsTotal)}/><Statistic title="هدف‌بندی‌شده" value={savingsAllocationTotal} formatter={() => money(savingsAllocationTotal)}/><Statistic title="بدون هدف" value={unallocatedSavingsAmount} formatter={() => money(unallocatedSavingsAmount)}/></div></Card>
+            <Card size="small" className="onboarding-goal-presets-card" title="هدف‌های پیشنهادی"><div className="onboarding-goal-presets">{savingsGoalPresets.map(name => <Button key={name} disabled={savingsGoals.some(goal => goal.name === name)} onClick={() => addSavingsGoal(name)}>{name}</Button>)}</div></Card>
+            <div className="onboarding-goal-list">{savingsGoals.map((goal, index) => <Card key={goal.id} className="onboarding-goal-card" size="small" title={<div className="onboarding-goal-card-title"><span><Target size={16}/>هدف {new Intl.NumberFormat('fa-IR').format(index + 1)}</span><Button type="text" danger icon={<Trash2 size={16}/>} aria-label={`حذف ${goal.name}`} onClick={() => setSavingsGoals(goals => goals.filter(item => item.id !== goal.id))}/></div>}>
+              <Form component="div" layout="vertical" className="onboarding-goal-form"><Form.Item label="نام هدف" className="goal-name-field"><Input value={goal.name} onChange={event => updateSavingsGoal(goal.id, { name: event.target.value })} placeholder="مثلاً سفر"/></Form.Item><Form.Item label="مبلغ اختصاص‌یافته"><InputNumber min={0} precision={0} controls={false} value={goal.allocatedAmount} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغ نهایی" extra="اختیاری"><InputNumber min={1} precision={0} controls={false} value={goal.targetAmount} onChange={value => updateSavingsGoal(goal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item><Form.Item label="تاریخ هدف" extra="اختیاری"><Input inputMode="numeric" value={goal.targetDate || ''} onChange={event => updateSavingsGoal(goal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></Form.Item></Form>
+              {goal.targetAmount && <div className="onboarding-goal-progress"><span>پیشرفت هدف</span><Progress percent={Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100))} size="small"/></div>}
             </Card>)}</div>
-            <div className="add-category"><Input value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onKeyDown={event => { if (event.key === 'Enter') { event.preventDefault(); addSavingsGoal(newSavingsGoal); } }} placeholder="هدف دلخواه، مثلاً مهاجرت"/><Button type="primary" icon={<Plus size={18}/>} onClick={() => addSavingsGoal(newSavingsGoal)}>افزودن هدف</Button></div>
+            <Input.Search className="onboarding-add-goal" value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onSearch={() => addSavingsGoal(newSavingsGoal)} placeholder="هدف دلخواه، مثلاً مهاجرت" enterButton={<><Plus size={16}/>افزودن هدف</>}/>
           </>}
-          {savingsGoalChoice === 'no' && <div className="onboarding-savings-skip">کل مبلغ به‌عنوان «پس‌انداز بدون هدف» ذخیره می‌شود و بعداً از تب پس‌انداز می‌توانی برایش هدف بسازی.</div>}
+          {savingsGoalChoice === 'no' && <Alert className="onboarding-savings-skip" type="info" showIcon message="پس‌اندازت بدون هدف ذخیره می‌شود." description="هر وقت بخواهی می‌توانی از تب پس‌انداز برایش هدف بسازی."/>}
         </section>}
 
         {step === 3 && <section className="onboarding-step categories-step">
