@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Form, Input, InputNumber, Popover, Progress, Segmented, Statistic, Switch } from 'antd';
+import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Pencil, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
+import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Statistic, Switch, Tag } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, formatCompactToman, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -22,6 +22,7 @@ type Props = {
 const money = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
 
 const savingsGoalPresets = ['صندوق اضطراری', 'سفر', 'خرید ماشین', 'خرید خانه', 'سرمایه‌گذاری', 'خرید لپ‌تاپ', 'سایر'];
+const savingsGoalEmoji = (name: string) => name.includes('سفر') ? '✈️' : name.includes('اضطرار') ? '🛡️' : name.includes('ماشین') ? '🚗' : name.includes('خانه') ? '🏠' : name.includes('سرمایه') ? '📈' : name.includes('لپ‌تاپ') ? '💻' : '🎯';
 
 export default function Onboarding({ initialSetup, initialSavingsPortfolio, onComplete, onCancel }: Props) {
   const [step, setStep] = useState(1);
@@ -32,7 +33,9 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const [allocationInputs, setAllocationInputs] = useState<Record<string, string>>(() => Object.fromEntries((initialSetup?.categories ?? createDefaultCategories()).map(category => [category.id, category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100)])));
   const [newCategory, setNewCategory] = useState('');
   const [savingsGoalChoice, setSavingsGoalChoice] = useState<'yes' | 'no' | null>(() => initialSavingsPortfolio ? (initialSavingsPortfolio.goals.length ? 'yes' : 'no') : null);
+  const [savingsGoalStage, setSavingsGoalStage] = useState<'choice' | 'builder'>('choice');
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(initialSavingsPortfolio?.goals ?? []);
+  const [editingSavingsGoalId, setEditingSavingsGoalId] = useState<string | null>(null);
   const [newSavingsGoal, setNewSavingsGoal] = useState('');
   const [openEmojiPicker, setOpenEmojiPicker] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -57,6 +60,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const onboardingSavingsTotal = onboardingSavingsBalance(initialSavingsPortfolio?.totalAmount ?? 0, savingsAmount);
   const unallocatedSavingsAmount = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal);
   const savingsAllocationPercent = onboardingSavingsTotal > 0 ? Math.round(savingsAllocationTotal / onboardingSavingsTotal * 100) : 0;
+  const editingSavingsGoal = savingsGoals.find(goal => goal.id === editingSavingsGoalId) ?? null;
 
   const changeIncome = (value: string) => {
     setIncomeInput(value);
@@ -130,7 +134,9 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const addSavingsGoal = (name: string) => {
     const cleanName = name.trim();
     if (!cleanName || savingsGoals.some(goal => goal.name === cleanName)) return setError('نام هدف خالی یا تکراری است.');
-    setSavingsGoals(goals => [...goals, { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] }]);
+    const goal = { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] } satisfies SavingsGoal;
+    setSavingsGoals(goals => [...goals, goal]);
+    setEditingSavingsGoalId(goal.id);
     setNewSavingsGoal('');
     setError('');
   };
@@ -157,9 +163,15 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
       if (!monthlyIncome) return setError('درآمد ماهانه باید یک عدد مثبت باشد.');
       if (savingsEnabled && (savingsPercentBps <= 0 || savingsPercentBps > 10000)) return setError('درصد پس‌انداز باید بین یک تا صد باشد.');
       setError('');
+      setSavingsGoalStage('choice');
       return setStep(savingsAmount > 0 ? 2 : 3);
     }
     if (step === 2) {
+      if (!savingsGoalChoice) return setError('انتخاب کن که می‌خواهی پس‌اندازت را هدف‌بندی کنی یا نه.');
+      if (savingsGoalStage === 'choice' && savingsGoalChoice === 'yes') {
+        setError('');
+        return setSavingsGoalStage('builder');
+      }
       const savingsValidation = validateSavingsGoals();
       if (savingsValidation) return setError(savingsValidation);
       setError('');
@@ -171,6 +183,12 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
       setError('');
       return setStep(4);
     }
+  };
+
+  const previousStep = () => {
+    setError('');
+    if (step === 2 && savingsGoalStage === 'builder') return setSavingsGoalStage('choice');
+    setStep(value => value === 3 && savingsAmount === 0 ? 1 : value - 1);
   };
 
   const requestPermission = async () => {
@@ -192,6 +210,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
       if (savingsValidation) {
         setError(savingsValidation);
         setStep(2);
+        if (savingsGoalChoice === 'yes') setSavingsGoalStage('builder');
         return;
       }
     }
@@ -239,19 +258,42 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
           </Form>
         </section>}
 
-        {step === 2 && <section className="onboarding-step savings-goals-step ant-goals-setup-step">
-          <div className="onboarding-section-title"><div className="step-icon"><Target size={23}/></div><div><span className="step-kicker">مرحله دوم · اختیاری</span><h1>پس‌اندازت را هدف‌بندی می‌کنی؟</h1><p>هدف‌ها فقط تقسیم‌بندی همین پول هستند و دوباره در دارایی‌ات حساب نمی‌شوند.</p></div></div>
-          <Card size="small" className="savings-choice-card"><span>می‌خواهی {money(onboardingSavingsTotal)} را بین چند هدف تقسیم کنی؟</span><Segmented block size="large" value={savingsGoalChoice || undefined} onChange={value => { setSavingsGoalChoice(value as 'yes' | 'no'); setError(''); }} options={[{value:'yes',label:'بله، هدف‌بندی می‌کنم'},{value:'no',label:'فعلاً بدون هدف'}]}/></Card>
-          {savingsGoalChoice === 'yes' && <>
-            <Card size="small" className={`onboarding-savings-summary ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`}><div className="savings-summary-head"><span>وضعیت تخصیص</span><strong>{new Intl.NumberFormat('fa-IR').format(savingsAllocationPercent)}٪</strong></div><Progress percent={Math.min(100, savingsAllocationPercent)} showInfo={false} status={savingsAllocationTotal > onboardingSavingsTotal ? 'exception' : 'active'}/><div className="savings-summary-stats"><Statistic title="کل پس‌انداز" value={onboardingSavingsTotal} formatter={() => money(onboardingSavingsTotal)}/><Statistic title="هدف‌بندی‌شده" value={savingsAllocationTotal} formatter={() => money(savingsAllocationTotal)}/><Statistic title="بدون هدف" value={unallocatedSavingsAmount} formatter={() => money(unallocatedSavingsAmount)}/></div></Card>
-            <Card size="small" className="onboarding-goal-presets-card" title="هدف‌های پیشنهادی"><div className="onboarding-goal-presets">{savingsGoalPresets.map(name => <Button key={name} disabled={savingsGoals.some(goal => goal.name === name)} onClick={() => addSavingsGoal(name)}>{name}</Button>)}</div></Card>
-            <div className="onboarding-goal-list">{savingsGoals.map((goal, index) => <Card key={goal.id} className="onboarding-goal-card" size="small" title={<div className="onboarding-goal-card-title"><span><Target size={15}/>{goal.name.trim() || `هدف ${new Intl.NumberFormat('fa-IR').format(index + 1)}`}</span><Button type="text" danger icon={<Trash2 size={15}/>} aria-label={`حذف ${goal.name}`} onClick={() => setSavingsGoals(goals => goals.filter(item => item.id !== goal.id))}/></div>}>
-              <Form component="div" layout="vertical" className="onboarding-goal-form"><Form.Item label="نام هدف"><Input value={goal.name} onChange={event => updateSavingsGoal(goal.id, { name: event.target.value })} placeholder="مثلاً سفر"/></Form.Item><Form.Item label="مبلغ اختصاص‌یافته"><InputNumber min={0} precision={0} controls={false} value={goal.allocatedAmount} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber min={1} precision={0} controls={false} value={goal.targetAmount} onChange={value => updateSavingsGoal(goal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item><Form.Item label="تاریخ هدف (اختیاری)"><Input inputMode="numeric" value={goal.targetDate || ''} onChange={event => updateSavingsGoal(goal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></Form.Item></Form>
-              {goal.targetAmount && <div className="onboarding-goal-progress"><span>پیشرفت هدف</span><Progress percent={Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100))} size="small"/></div>}
-            </Card>)}</div>
-            <Input.Search className="onboarding-add-goal" value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onSearch={() => addSavingsGoal(newSavingsGoal)} placeholder="هدف دلخواه، مثلاً مهاجرت" enterButton={<Plus aria-label="افزودن هدف" size={18}/>}/>
+        {step === 2 && <section className="onboarding-step savings-goals-step savings-goal-flow">
+          <div className="savings-goal-flow-heading">
+            <div className="savings-goal-flow-kicker"><span>مرحله دوم</span><Tag bordered={false}>اختیاری</Tag></div>
+            <h1>{savingsGoalStage === 'builder' ? 'هدف‌هات رو بساز' : 'برای ذخیره‌هات هدف بذار'}</h1>
+            <p>{savingsGoalStage === 'builder' ? 'برای هر هدف مشخص کن چقدر از ذخیرهی ماهانه‌ات بهش برسه.' : <>ذخیرهی این ماهت <strong>{money(onboardingSavingsTotal)}</strong>ـه. می‌تونی بین چند تا هدف تقسیمش کنی؛ هدف‌ها فقط برچسبن و پول اضافه‌ای حساب نمی‌شن.</>}</p>
+          </div>
+
+          {savingsGoalStage === 'choice' ? <div className="savings-goal-choice-grid">
+            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'yes' ? 'selected' : ''}`} onClick={() => { setSavingsGoalChoice('yes'); setError(''); }}>
+              <span className="choice-radio"/><span className="choice-icon"><Target size={21}/></span><strong>آره، هدف می‌ذارم</strong><small>مثلاً سفر، ماشین یا صندوق اضطراری</small>
+            </Button>
+            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'no' ? 'selected' : ''}`} onClick={() => { setSavingsGoalChoice('no'); setError(''); }}>
+              <span className="choice-radio"/><span className="choice-icon neutral"><ArrowLeft size={21}/></span><strong>فعلاً نه</strong><small>بعداً از تنظیمات هم می‌تونی اضافه کنی</small>
+            </Button>
+          </div> : <>
+            <Card className={`savings-allocation-overview ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`} variant="borderless">
+              <div className="allocation-overview-top"><span>تقسیم‌شده از ذخیرهی ماه</span><strong>{money(savingsAllocationTotal)} <i>/ {money(onboardingSavingsTotal)}</i></strong></div>
+              <Progress percent={Math.min(100, savingsAllocationPercent)} showInfo={false} status={savingsAllocationTotal > onboardingSavingsTotal ? 'exception' : 'normal'}/>
+              <p>{money(unallocatedSavingsAmount)} هنوز تقسیم نشده</p>
+            </Card>
+
+            <div className="savings-goal-summary-list">{savingsGoals.map(goal => {
+              const progress = goal.targetAmount ? Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100)) : 0;
+              return <Card key={goal.id} className="savings-goal-summary-card" variant="borderless">
+                <div className="goal-summary-main"><span className="goal-summary-emoji">{savingsGoalEmoji(goal.name)}</span><div><strong>{goal.name}</strong><small>{goal.targetAmount ? `هدف: ${money(goal.targetAmount)}${goal.targetDate ? ` · تا ${goal.targetDate}` : ''}` : 'بدون مبلغ و تاریخ هدف'}</small></div><Button type="text" icon={<Pencil size={16}/>} aria-label={`ویرایش ${goal.name}`} onClick={() => setEditingSavingsGoalId(goal.id)}/></div>
+                <div className="goal-summary-allocation"><span>اختصاص این ماه</span><strong>{money(goal.allocatedAmount)}</strong></div>
+                {goal.targetAmount ? <div className="goal-summary-progress"><Progress percent={progress} showInfo={false}/><small>{new Intl.NumberFormat('fa-IR').format(progress)}٪ از هدف</small></div> : null}
+              </Card>;
+            })}</div>
+
+            <div className="savings-add-goal-box">
+              <strong>یه هدف دیگه اضافه کن</strong>
+              <div className="savings-add-goal-presets">{savingsGoalPresets.filter(name => !savingsGoals.some(goal => goal.name === name)).slice(0, 4).map(name => <Button key={name} onClick={() => addSavingsGoal(name)}>{savingsGoalEmoji(name)} {name.replace('خرید ', '')}</Button>)}</div>
+              <Input.Search className="onboarding-add-goal" value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onSearch={() => addSavingsGoal(newSavingsGoal)} placeholder="اسم هدفت چیه؟" enterButton={<Plus aria-label="افزودن هدف" size={18}/>}/>
+            </div>
           </>}
-          {savingsGoalChoice === 'no' && <Alert className="onboarding-savings-skip" type="info" showIcon message="پس‌اندازت بدون هدف ذخیره می‌شود." description="هر وقت بخواهی می‌توانی از تب پس‌انداز برایش هدف بسازی."/>}
         </section>}
 
         {step === 3 && <section className="onboarding-step categories-step">
@@ -307,10 +349,19 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
 
         {error && <Alert className="onboarding-error" type="error" showIcon message={error}/>}
         <footer className="onboarding-actions">
-          {step > 1 ? <Button className="previous-button" icon={<ArrowRight size={18}/>} onClick={() => { setError(''); setStep(value => value === 3 && savingsAmount === 0 ? 1 : value - 1); }}>قبلی</Button> : <span/>}
+          {step > 1 ? <Button className="previous-button" icon={<ArrowRight size={18}/>} onClick={previousStep}>قبلی</Button> : <span/>}
           {step < 4 ? <Button type="primary" className="next-button" onClick={nextStep}>ادامه <ArrowLeft size={18}/></Button> : <Button type="primary" className="next-button" loading={saving} icon={!saving ? <Check size={18}/> : undefined} onClick={complete}>تأیید نهایی</Button>}
         </footer>
       </Card>
     </section>
+    <Modal className="savings-goal-editor-modal" open={Boolean(editingSavingsGoal)} title={editingSavingsGoal ? `ویرایش ${editingSavingsGoal.name}` : 'ویرایش هدف'} footer={null} destroyOnHidden onCancel={() => setEditingSavingsGoalId(null)}>
+      {editingSavingsGoal && <Form component="div" layout="vertical">
+        <Form.Item label="نام هدف"><Input value={editingSavingsGoal.name} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { name: event.target.value })}/></Form.Item>
+        <Form.Item label="مبلغ اختصاص‌یافته"><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.allocatedAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></Form.Item>
+        <Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
+        <Form.Item label="تاریخ هدف (اختیاری)"><Input inputMode="numeric" value={editingSavingsGoal.targetDate || ''} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></Form.Item>
+        <div className="savings-goal-editor-actions"><Button danger type="text" icon={<Trash2 size={15}/>} onClick={() => { setSavingsGoals(goals => goals.filter(goal => goal.id !== editingSavingsGoal.id)); setEditingSavingsGoalId(null); }}>حذف هدف</Button><Button type="primary" onClick={() => setEditingSavingsGoalId(null)}>تمام</Button></div>
+      </Form>}
+    </Modal>
   </main>;
 }
