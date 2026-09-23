@@ -7,7 +7,7 @@ import {
   X, LogOut, Tags, Moon, ShieldCheck, UserRound, Info,
   LockKeyhole, Mail, Sparkles, CalendarDays, Repeat2,
   ChevronLeft, ChevronRight, Wrench, Loader2, RefreshCw,
-  PiggyBank,
+  Vault,
 } from 'lucide-react';
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
@@ -120,7 +120,7 @@ const navItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [
   { id: 'transactions', label: 'تراکنش‌ها', icon: ReceiptText },
   { id: 'reports', label: 'گزارش‌ها', icon: BarChart3 },
   { id: 'budgets', label: 'بودجه‌بندی', icon: Target },
-  { id: 'savings', label: 'پس‌انداز', icon: PiggyBank },
+  { id: 'savings', label: 'پس‌انداز', icon: Vault },
   { id: 'settings', label: 'تنظیمات', icon: Settings },
 ];
 const mobileNavItems: { id: Page; label: string; icon: typeof LayoutDashboard }[] = [

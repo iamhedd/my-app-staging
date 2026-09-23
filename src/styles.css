@@ -1157,6 +1157,7 @@ body{color:var(--ink)}
 .onboarding-goal-form .ant-input-number-group-addon{padding-inline:8px;font-size:9px}
 .onboarding-goal-progress{gap:8px;padding-top:2px}
 .onboarding-add-goal .ant-input-group .ant-input,.onboarding-add-goal .ant-input-search-button{height:38px}
+.onboarding-add-goal .ant-input-search-button{width:38px;padding:0;justify-content:center}
 
 @media(max-width:650px){
   .ant-goals-setup-step{gap:10px}
@@ -1165,4 +1166,5 @@ body{color:var(--ink)}
   .onboarding-goal-form .ant-form-item{margin-bottom:7px}
   .onboarding-goal-presets-card>.ant-card-body{padding:9px 10px 10px}
   .onboarding-goal-presets .ant-btn{height:32px}
+  .onboarding-add-goal .ant-input-search-button{padding:0}
 }

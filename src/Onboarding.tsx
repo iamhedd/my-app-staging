@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, PiggyBank, Plus, Smile, Target, Trash2, WalletCards } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
 import { Alert, Button, Card, Form, Input, InputNumber, Popover, Progress, Segmented, Statistic, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
@@ -229,7 +229,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
               <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="تومان"/>
             </Form.Item>
             <Card size="small" className="savings-percentage-card">
-              <div className="savings-toggle-row"><div><PiggyBank size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
+              <div className="savings-toggle-row"><div><Vault size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
               {savingsEnabled ? <div className="savings-percent-editor">
                 <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><InputNumber aria-label="درصد پس انداز" min={1} max={100} step={0.5} precision={2} controls={false} value={savingsPercent} onChange={changeSavingsPercent} addonAfter="٪"/></div>
                 <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{formatCompactToman(savingsAmount)}</strong> می‌شود.</span>}/>
@@ -249,7 +249,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
               <Form component="div" layout="vertical" className="onboarding-goal-form"><Form.Item label="نام هدف"><Input value={goal.name} onChange={event => updateSavingsGoal(goal.id, { name: event.target.value })} placeholder="مثلاً سفر"/></Form.Item><Form.Item label="مبلغ اختصاص‌یافته"><InputNumber min={0} precision={0} controls={false} value={goal.allocatedAmount} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0 })} addonAfter="تومان"/></Form.Item><Form.Item label="مبلغ نهایی (اختیاری)"><InputNumber min={1} precision={0} controls={false} value={goal.targetAmount} onChange={value => updateSavingsGoal(goal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item><Form.Item label="تاریخ هدف (اختیاری)"><Input inputMode="numeric" value={goal.targetDate || ''} onChange={event => updateSavingsGoal(goal.id, { targetDate: event.target.value || null })} placeholder="۱۴۰۶/۰۱/۳۱"/></Form.Item></Form>
               {goal.targetAmount && <div className="onboarding-goal-progress"><span>پیشرفت هدف</span><Progress percent={Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100))} size="small"/></div>}
             </Card>)}</div>
-            <Input.Search className="onboarding-add-goal" value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onSearch={() => addSavingsGoal(newSavingsGoal)} placeholder="هدف دلخواه، مثلاً مهاجرت" enterButton={<><Plus size={16}/>افزودن هدف</>}/>
+            <Input.Search className="onboarding-add-goal" value={newSavingsGoal} onChange={event => setNewSavingsGoal(event.target.value)} onSearch={() => addSavingsGoal(newSavingsGoal)} placeholder="هدف دلخواه، مثلاً مهاجرت" enterButton={<Plus aria-label="افزودن هدف" size={18}/>}/>
           </>}
           {savingsGoalChoice === 'no' && <Alert className="onboarding-savings-skip" type="info" showIcon message="پس‌اندازت بدون هدف ذخیره می‌شود." description="هر وقت بخواهی می‌توانی از تب پس‌انداز برایش هدف بسازی."/>}
         </section>}
