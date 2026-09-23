@@ -1,3 +1,8 @@
+export type SavingsGoalProgress = {
+  monthKey: string;
+  amount: number;
+};
+
 export type SavingsGoal = {
   id: string;
   name: string;
@@ -5,6 +10,7 @@ export type SavingsGoal = {
   targetAmount: number | null;
   targetDate: string | null;
   completed: boolean;
+  progressHistory: SavingsGoalProgress[];
 };
 
 export type SavingsPortfolio = {
@@ -31,8 +37,41 @@ export function validateSavingsPortfolio(portfolio: SavingsPortfolio) {
   if (new Set(portfolio.goals.map(goal => goal.name.trim().toLocaleLowerCase('fa'))).size !== portfolio.goals.length) return 'نام هدف‌ها نباید تکراری باشد.';
   if (portfolio.goals.some(goal => !Number.isSafeInteger(goal.allocatedAmount) || goal.allocatedAmount < 0)) return 'مبلغ تخصیص هدف معتبر نیست.';
   if (portfolio.goals.some(goal => goal.targetAmount !== null && (!Number.isSafeInteger(goal.targetAmount) || goal.targetAmount <= 0))) return 'مبلغ نهایی هدف باید بیشتر از صفر باشد.';
+  if (portfolio.goals.some(goal => !Array.isArray(goal.progressHistory))) return 'تاریخچه پیشرفت هدف معتبر نیست.';
+  for (const goal of portfolio.goals) {
+    const months = new Set<string>();
+    for (const progress of goal.progressHistory) {
+      if (!/^\d{4}\/(?:0[1-9]|1[0-2])$/.test(progress.monthKey) || !Number.isSafeInteger(progress.amount) || progress.amount < 0) return 'تاریخچه پیشرفت هدف معتبر نیست.';
+      if (months.has(progress.monthKey)) return 'تاریخچه پیشرفت هدف نباید ماه تکراری داشته باشد.';
+      months.add(progress.monthKey);
+    }
+  }
   if (allocatedSavings(portfolio) > portfolio.totalAmount) return 'مجموع مبالغ هدف‌ها نمی‌تواند از کل پس‌انداز بیشتر باشد.';
   return null;
+}
+
+export function withGoalProgressSnapshot(portfolio: SavingsPortfolio, monthKey: string): SavingsPortfolio {
+  return {
+    ...portfolio,
+    goals: portfolio.goals.map(goal => {
+      const history = (goal.progressHistory || []).filter(item => item.monthKey !== monthKey);
+      return {
+        ...goal,
+        progressHistory: [...history, { monthKey, amount: goal.allocatedAmount }]
+          .sort((left, right) => left.monthKey.localeCompare(right.monthKey, 'en')),
+      };
+    }),
+  };
+}
+
+export function recentGoalProgress(goal: SavingsGoal, currentMonthKey: string, limit = 6) {
+  const history = goal.progressHistory || [];
+  const withCurrent = history.some(item => item.monthKey === currentMonthKey)
+    ? history
+    : [...history, { monthKey: currentMonthKey, amount: goal.allocatedAmount }];
+  return [...withCurrent]
+    .sort((left, right) => left.monthKey.localeCompare(right.monthKey, 'en'))
+    .slice(-limit);
 }
 
 export function createSavingsPortfolio(totalAmount: number, monthKey: string): SavingsPortfolio {

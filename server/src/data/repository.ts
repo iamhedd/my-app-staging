@@ -97,6 +97,12 @@ function mapSavingsPortfolio(account: DatabaseRow | undefined, goals: DatabaseRo
       targetAmount: row.target_amount == null ? null : String(row.target_amount),
       targetDate: row.target_date == null ? null : String(row.target_date),
       completed: Boolean(row.completed),
+      progressHistory: Array.isArray(row.progress_history)
+        ? row.progress_history.map(item => {
+          const progress = item as Record<string, unknown>;
+          return { monthKey: String(progress.monthKey), amount: String(progress.amount) };
+        })
+        : [],
     })),
     updatedAt: account.updated_at,
   };
@@ -316,6 +322,8 @@ export async function replaceBudgets(userId: string, budgets: BudgetInput[]) {
 
 export async function saveSavingsPortfolio(userId: string, input: SavingsPortfolioInput) {
   return withUserContext(userId, async client => {
+    const existingGoals = await client.query('select client_id, progress_history from savings_goals where user_id = $1', [userId]);
+    const progressByGoal = new Map(existingGoals.rows.map(row => [String(row.client_id), Array.isArray(row.progress_history) ? row.progress_history : []]));
     const account = await client.query(
       `insert into savings_accounts
        (user_id, total_amount, target_month_key, monthly_target_amount)
@@ -329,11 +337,12 @@ export async function saveSavingsPortfolio(userId: string, input: SavingsPortfol
     );
     await client.query('delete from savings_goals where user_id = $1', [userId]);
     for (const [index, goal] of input.goals.entries()) {
+      const progressHistory = goal.progressHistory ?? progressByGoal.get(goal.id) ?? [];
       await client.query(
         `insert into savings_goals
-         (user_id, client_id, name, allocated_amount, target_amount, target_date, completed, sort_order)
-         values ($1, $2, $3, $4, $5, $6, $7, $8)`,
-        [userId, goal.id, goal.name, goal.allocatedAmount, goal.targetAmount, goal.targetDate, goal.completed, index],
+         (user_id, client_id, name, allocated_amount, target_amount, target_date, completed, progress_history, sort_order)
+         values ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)`,
+        [userId, goal.id, goal.name, goal.allocatedAmount, goal.targetAmount, goal.targetDate, goal.completed, JSON.stringify(progressHistory), index],
       );
     }
     const goals = await client.query('select * from savings_goals where user_id = $1 order by sort_order, created_at', [userId]);

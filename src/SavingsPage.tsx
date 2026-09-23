@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight, CalendarDays, Check, CircleDollarSign, Pencil, PiggyBank, Plus, RotateCcw, Trash2 } from 'lucide-react';
 import { Alert, Button, Card, Empty, Form, Input, InputNumber, Modal, Progress, Segmented, Select, Tag } from 'antd';
-import { parseJalaliDate, type JalaliMonth } from './dateUtils';
-import { allocatedSavings, createSavingsPortfolio, unallocatedSavings, validateSavingsPortfolio, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { jalaliMonthNames, monthFromOffset, parseJalaliDate, toPersianDigits, type JalaliMonth } from './dateUtils';
+import { allocatedSavings, createSavingsPortfolio, recentGoalProgress, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
 
 type Props = {
   month: JalaliMonth;
@@ -55,12 +55,13 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
   ], [portfolio, unallocated]);
 
   const persist = async (next: SavingsPortfolio, success: string) => {
-    const validation = validateSavingsPortfolio(next);
+    const nextWithProgress = withGoalProgressSnapshot(next, monthFromOffset(0).key);
+    const validation = validateSavingsPortfolio(nextWithProgress);
     if (validation) return setError(validation);
     setSaving(true);
     setError('');
     try {
-      await onSave({ ...next, updatedAt: new Date().toISOString() });
+      await onSave({ ...nextWithProgress, updatedAt: new Date().toISOString() });
       notify(success);
       return true;
     } catch (saveError) {
@@ -110,6 +111,7 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
       targetAmount: goalTarget,
       targetDate: goalDate || null,
       completed: editingGoal?.completed || false,
+      progressHistory: editingGoal?.progressHistory || [],
     };
     const goals = editingGoal
       ? portfolio.goals.map(goal => goal.id === editingGoal.id ? nextGoal : goal)
@@ -181,10 +183,22 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
     <div className="savings-section-heading"><div><h2>هدف‌های پس‌انداز</h2><span>{portfolio?.goals.length || 0} هدف</span></div><Button icon={<Plus size={16}/>} onClick={() => openGoal()}>هدف جدید</Button></div>
     {!portfolio?.goals.length ? <Card className="savings-empty" variant="borderless"><Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description={<><strong>فعلاً همه پس‌اندازت بدون هدف است</strong><span>هر وقت خواستی بخشی از آن را برای یک هدف کنار بگذار.</span></>}><Button type="primary" onClick={() => openGoal()}>اولین هدف را بساز</Button></Empty></Card> : <div className="savings-goal-grid">{portfolio.goals.map(goal => {
       const progress = goal.targetAmount ? Math.min(100, Math.round(goal.allocatedAmount / goal.targetAmount * 100)) : null;
+      const monthlyProgress = recentGoalProgress(goal, monthFromOffset(0).key);
       return <Card key={goal.id} className={`savings-goal-card ${goal.completed ? 'completed' : ''}`} variant="borderless">
         <div className="savings-goal-top"><div className="savings-goal-icon">{goal.completed ? <Check size={20}/> : <TargetIcon/>}</div><div><strong>{goal.name}</strong>{goal.completed && <Tag>تکمیل‌شده</Tag>}</div><Button type="text" aria-label={`ویرایش ${goal.name}`} icon={<Pencil size={16}/>} onClick={() => openGoal(goal)}/></div>
         <div className="savings-goal-amount"><span>مبلغ اختصاص‌یافته</span><strong>{money(goal.allocatedAmount)}</strong></div>
         {goal.targetAmount ? <><div className="savings-goal-progress-copy"><span>{money(goal.targetAmount)} هدف نهایی</span><b>{progress}٪</b></div><Progress percent={progress || 0} showInfo={false}/></> : <div className="savings-goal-no-target">مبلغ نهایی تعیین نشده</div>}
+        <div className="goal-monthly-progress">
+          <div className="goal-monthly-progress-title"><strong>پیشرفت ماه‌به‌ماه</strong><span>تا ۶ ماه اخیر</span></div>
+          {goal.targetAmount ? monthlyProgress.map(item => {
+            const percent = Math.min(100, Math.round(item.amount / goal.targetAmount! * 100));
+            return <div className="goal-monthly-progress-row" key={item.monthKey}>
+              <span>{goalMonthLabel(item.monthKey)}</span>
+              <Progress percent={percent} showInfo={false}/>
+              <b>{toPersianDigits(percent)}٪</b>
+            </div>;
+          }) : <div className="goal-monthly-progress-empty">برای نمایش درصد، مبلغ نهایی هدف را مشخص کن.</div>}
+        </div>
         {goal.targetDate && <small className="savings-goal-date"><CalendarDays size={13}/> تاریخ هدف: {goal.targetDate}</small>}
         <div className="savings-goal-footer"><Button size="small" onClick={() => patchGoal(goal.id, { completed: !goal.completed }, goal.completed ? 'هدف دوباره فعال شد' : 'هدف تکمیل شد')}>{goal.completed ? 'فعال‌کردن دوباره' : 'علامت تکمیل'}</Button>{goal.allocatedAmount > 0 && <Button size="small" type="text" icon={<RotateCcw size={14}/>} onClick={() => patchGoal(goal.id, { allocatedAmount: 0 }, 'مبلغ هدف به پس‌انداز بدون هدف برگشت')}>برگشت به بدون هدف</Button>}</div>
       </Card>;
@@ -208,4 +222,10 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
 
 function TargetIcon() {
   return <span aria-hidden="true">◎</span>;
+}
+
+function goalMonthLabel(monthKey: string) {
+  const [year, month] = monthKey.split('/').map(Number);
+  if (!year || month < 1 || month > 12) return toPersianDigits(monthKey);
+  return `${jalaliMonthNames[month - 1]} ${toPersianDigits(year)}`;
 }

@@ -81,6 +81,11 @@ export const transactionInputSchema = z.object({
   generatedFrom: clientIdSchema.nullable().default(null),
 }).strict();
 
+const savingsGoalProgressInputSchema = z.object({
+  monthKey: z.string().regex(/^\d{4}\/(?:0[1-9]|1[0-2])$/),
+  amount: moneySchema,
+}).strict();
+
 export const savingsGoalInputSchema = z.object({
   id: clientIdSchema,
   name: z.string().trim().min(1).max(120),
@@ -88,6 +93,13 @@ export const savingsGoalInputSchema = z.object({
   targetAmount: positiveMoneySchema.nullable(),
   targetDate: z.iso.date().nullable(),
   completed: z.boolean(),
+  progressHistory: z.array(savingsGoalProgressInputSchema).max(120).superRefine((history, context) => {
+    const months = new Set<string>();
+    history.forEach((item, index) => {
+      if (months.has(item.monthKey)) context.addIssue({ code: 'custom', path: [index, 'monthKey'], message: 'ماه پیشرفت تکراری است.' });
+      months.add(item.monthKey);
+    });
+  }).optional(),
 }).strict();
 
 export const savingsPortfolioInputSchema = z.object({

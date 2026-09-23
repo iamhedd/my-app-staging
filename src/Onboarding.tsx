@@ -10,7 +10,7 @@ import {
 import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { monthFromOffset, parseJalaliDate } from './dateUtils';
-import { createSavingsPortfolio, onboardingSavingsBalance, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { createSavingsPortfolio, onboardingSavingsBalance, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -136,7 +136,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const addSavingsGoal = (name: string) => {
     const cleanName = name.trim();
     if (!cleanName || savingsGoals.some(goal => goal.name === cleanName)) return setError('نام هدف خالی یا تکراری است.');
-    setSavingsGoals(goals => [...goals, { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, targetAmount: null, targetDate: null, completed: false }]);
+    setSavingsGoals(goals => [...goals, { id: crypto.randomUUID(), name: cleanName, allocatedAmount: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] }]);
     setNewSavingsGoal('');
     setError('');
   };
@@ -206,14 +206,14 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     const setup = createCompletedSetup(monthlyIncome, savingsPercentBps, categories, reminder, savingsAmount);
     const currentMonthKey = monthFromOffset(0).key;
     const basePortfolio = initialSavingsPortfolio ?? createSavingsPortfolio(onboardingSavingsTotal, currentMonthKey);
-    const nextSavingsPortfolio: SavingsPortfolio = {
+    const nextSavingsPortfolio = withGoalProgressSnapshot({
       ...basePortfolio,
       totalAmount: onboardingSavingsTotal,
       monthKey: currentMonthKey,
       monthlyTargetAmount: savingsAmount,
       goals: savingsAmount > 0 && savingsGoalChoice === 'yes' ? savingsGoals : initialSetup?.onboardingCompleted && savingsAmount === 0 ? basePortfolio.goals : [],
       updatedAt: new Date().toISOString(),
-    };
+    }, currentMonthKey);
     try {
       await onComplete(setup, nextSavingsPortfolio);
     } catch (saveError) {

@@ -47,15 +47,34 @@ describe('API persistence contracts', () => {
       totalAmount: 20_000_000,
       monthKey: '1405/07',
       monthlyTargetAmount: 20_000_000,
-      goals: [{ id: 'travel', name: 'سفر', allocatedAmount: 5_000_000, targetAmount: 15_000_000, targetDate: '1406/01/31', completed: false }],
+      goals: [{ id: 'travel', name: 'سفر', allocatedAmount: 5_000_000, targetAmount: 15_000_000, targetDate: '1406/01/31', completed: false, progressHistory: [{ monthKey: '1405/07', amount: 5_000_000 }] }],
       updatedAt: '2026-09-22T00:00:00.000Z',
     });
     const [url, request] = fetchMock.mock.calls[0];
     expect(url).toBe('/api/v1/savings');
     expect(JSON.parse(String(request?.body))).toMatchObject({
       totalAmount: '20000000',
-      goals: [{ allocatedAmount: '5000000', targetAmount: '15000000', targetDate: '2027-04-20' }],
+      goals: [{ allocatedAmount: '5000000', targetAmount: '15000000', targetDate: '2027-04-20', progressHistory: [{ monthKey: '1405/07', amount: '5000000' }] }],
     });
+  });
+
+  it('hydrates savings progress history without counting it as another asset', async () => {
+    fetchMock.mockResolvedValue(jsonResponse({
+      profile: null,
+      savingsPortfolio: {
+        totalAmount: '20000000', monthKey: '1405/07', monthlyTargetAmount: '5000000',
+        goals: [{
+          id: 'travel', name: 'سفر', allocatedAmount: '5000000', targetAmount: '15000000', targetDate: null, completed: false,
+          progressHistory: [{ monthKey: '1405/06', amount: '3000000' }, { monthKey: '1405/07', amount: '5000000' }],
+        }],
+      },
+    }));
+    const data = await loadCloudUserData({ id: 'u', name: 'کاربر', email: 'u@example.com', emailVerified: true, image: null });
+    expect(data.savingsPortfolio?.totalAmount).toBe(20_000_000);
+    expect(data.savingsPortfolio?.goals[0].progressHistory).toEqual([
+      { monthKey: '1405/06', amount: 3_000_000 },
+      { monthKey: '1405/07', amount: 5_000_000 },
+    ]);
   });
 
   it('hydrates API bigint strings and ISO dates into the existing frontend model', async () => {

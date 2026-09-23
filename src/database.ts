@@ -70,6 +70,7 @@ type ApiSavingsPortfolio = {
     targetAmount: string | number | null;
     targetDate: string | null;
     completed: boolean;
+    progressHistory?: Array<{ monthKey: string; amount: string | number }>;
   }>;
   updatedAt?: string;
 };
@@ -164,6 +165,10 @@ export async function loadCloudUserData(user: User): Promise<CloudUserData> {
       targetAmount: goal.targetAmount === null ? null : moneyNumber(goal.targetAmount, `هدف ${goal.name}`),
       targetDate: goal.targetDate ? (isoDateToJalali(goal.targetDate) || null) : null,
       completed: goal.completed,
+      progressHistory: (goal.progressHistory || []).map(item => ({
+        monthKey: item.monthKey,
+        amount: moneyNumber(item.amount, `پیشرفت ${goal.name}`),
+      })),
     })),
     updatedAt: apiSavings.updatedAt || new Date().toISOString(),
   } : null;
@@ -275,6 +280,10 @@ export async function saveCloudSavingsPortfolio(_userId: string, portfolio: Savi
         targetAmount: goal.targetAmount === null ? null : moneyString(goal.targetAmount, `هدف ${goal.name}`, true),
         targetDate: goal.targetDate ? jalaliToIsoDate(goal.targetDate) : null,
         completed: goal.completed,
+        progressHistory: goal.progressHistory.map(item => ({
+          monthKey: item.monthKey,
+          amount: moneyString(item.amount, `پیشرفت ${goal.name}`),
+        })),
       })),
     }),
   });
