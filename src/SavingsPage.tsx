@@ -197,7 +197,14 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
               <Progress percent={percent} showInfo={false}/>
               <b>{toPersianDigits(percent)}٪</b>
             </div>;
-          }) : <div className="goal-monthly-progress-empty">برای نمایش درصد، مبلغ نهایی هدف را مشخص کن.</div>}
+          }) : <>
+            {monthlyProgress.map(item => <div className="goal-monthly-progress-row no-target" key={item.monthKey}>
+              <span>{goalMonthLabel(item.monthKey)}</span>
+              <Progress percent={0} showInfo={false}/>
+              <b>—</b>
+            </div>)}
+            <div className="goal-monthly-progress-empty">برای محاسبه درصد، مبلغ نهایی هدف را مشخص کن.</div>
+          </>}
         </div>
         {goal.targetDate && <small className="savings-goal-date"><CalendarDays size={13}/> تاریخ هدف: {goal.targetDate}</small>}
         <div className="savings-goal-footer"><Button size="small" onClick={() => patchGoal(goal.id, { completed: !goal.completed }, goal.completed ? 'هدف دوباره فعال شد' : 'هدف تکمیل شد')}>{goal.completed ? 'فعال‌کردن دوباره' : 'علامت تکمیل'}</Button>{goal.allocatedAmount > 0 && <Button size="small" type="text" icon={<RotateCcw size={14}/>} onClick={() => patchGoal(goal.id, { allocatedAmount: 0 }, 'مبلغ هدف به پس‌انداز بدون هدف برگشت')}>برگشت به بدون هدف</Button>}</div>
