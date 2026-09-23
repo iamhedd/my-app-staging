@@ -1129,3 +1129,40 @@ body{color:var(--ink)}
   .savings-choice-card .ant-segmented-group{display:grid;grid-template-columns:1fr}
   .onboarding-goal-presets{grid-template-columns:1fr}
 }
+
+/* Compact savings goals: keep this optional step light and scannable. */
+.ant-goals-setup-step{gap:12px}
+.ant-goals-setup-step .onboarding-section-title{margin-bottom:2px}
+.savings-choice-card>.ant-card-body{gap:8px;padding:12px 14px}
+.ant-goals-setup-step .onboarding-savings-summary>.ant-card-body{padding:12px 14px}
+.ant-goals-setup-step .onboarding-savings-summary .ant-progress{margin-bottom:9px}
+.savings-summary-stats{padding-top:9px}
+.onboarding-goal-presets-card .ant-card-head{min-height:36px}
+.onboarding-goal-presets-card .ant-card-head-title{padding:7px 0}
+.onboarding-goal-presets-card>.ant-card-body{padding:10px 12px 12px}
+.onboarding-goal-presets{gap:6px}
+.onboarding-goal-presets .ant-btn{height:30px;padding-inline:10px;border-radius:999px}
+.onboarding-goal-list{gap:8px}
+.onboarding-goal-card .ant-card-head{min-height:38px;padding-inline:12px;background:#fff}
+.onboarding-goal-card .ant-card-head-title{padding:6px 0}
+.onboarding-goal-card>.ant-card-body{padding:12px}
+.onboarding-goal-card-title>span{font-size:10px}
+.onboarding-goal-card-title .ant-btn{width:30px;height:30px;padding:0}
+.onboarding-goal-form{gap:0 10px}
+.onboarding-goal-form .goal-name-field{grid-column:auto}
+.onboarding-goal-form .ant-form-item{margin-bottom:8px}
+.onboarding-goal-form .ant-form-item-label{padding-bottom:3px}
+.onboarding-goal-form .ant-form-item-label>label{height:auto;font-size:9px}
+.onboarding-goal-form .ant-input,.onboarding-goal-form .ant-input-number{height:36px}
+.onboarding-goal-form .ant-input-number-group-addon{padding-inline:8px;font-size:9px}
+.onboarding-goal-progress{gap:8px;padding-top:2px}
+.onboarding-add-goal .ant-input-group .ant-input,.onboarding-add-goal .ant-input-search-button{height:38px}
+
+@media(max-width:650px){
+  .ant-goals-setup-step{gap:10px}
+  .onboarding-goal-card>.ant-card-body{padding:10px}
+  .onboarding-goal-form{gap:0}
+  .onboarding-goal-form .ant-form-item{margin-bottom:7px}
+  .onboarding-goal-presets-card>.ant-card-body{padding:9px 10px 10px}
+  .onboarding-goal-presets .ant-btn{height:32px}
+}
