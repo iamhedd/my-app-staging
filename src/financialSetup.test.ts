@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addCategory, budgetsFromFinancialSetup, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, createCompletedSetup, createDefaultCategories,
-  loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
+  formatCompactToman, loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
   removeCategory, saveFinancialSetup, shouldShowNewUserIntro, totalPercentageBps, validateBudgetAllocationLimit, validateFinancialSetup,
 } from './financialSetup';
 
@@ -20,6 +20,13 @@ describe('financial setup calculations', () => {
     expect(parsePositiveInteger('-12')).toBeNull();
     expect(parsePositiveInteger('12.5')).toBeNull();
     expect(parseNonNegativeInteger('۰')).toBe(0);
+  });
+
+  it('formats money with an automatic readable toman unit', () => {
+    expect(formatCompactToman(68_000_000)).toBe('۶۸ میلیون تومان');
+    expect(formatCompactToman(1_250_000_000)).toBe('۱٫۲۵ میلیارد تومان');
+    expect(formatCompactToman(750_000)).toBe('۷۵۰ هزار تومان');
+    expect(formatCompactToman(900)).toBe('۹۰۰ تومان');
   });
 
   it('stores percentage as basis points', () => {

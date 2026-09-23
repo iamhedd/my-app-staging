@@ -71,6 +71,19 @@ export function parseNonNegativeInteger(value: string) {
   return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
 }
 
+export function formatCompactToman(value: number) {
+  const amount = Number.isFinite(value) ? Math.max(0, value) : 0;
+  const units = [
+    { threshold: 1_000_000_000, label: 'میلیارد' },
+    { threshold: 1_000_000, label: 'میلیون' },
+    { threshold: 1_000, label: 'هزار' },
+  ];
+  const unit = units.find(item => amount >= item.threshold);
+  if (!unit) return `${new Intl.NumberFormat('fa-IR').format(amount)} تومان`;
+  const compactAmount = amount / unit.threshold;
+  return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(compactAmount)} ${unit.label} تومان`;
+}
+
 export function percentageToBps(value: string) {
   const normalized = value.replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).replace('٫', '.').trim();
   if (!/^\d{1,3}(\.\d{0,2})?$/.test(normalized)) return null;

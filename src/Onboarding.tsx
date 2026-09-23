@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, PiggyBank, Plus, Smile, Target, Trash2, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Form, Input, InputNumber, Popover, Progress, Segmented, Slider, Statistic, Switch } from 'antd';
+import { Alert, Button, Card, Form, Input, InputNumber, Popover, Progress, Segmented, Statistic, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
-  createDefaultCategories, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
+  createDefaultCategories, formatCompactToman, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
   validateFinancialSetup,
   type ExpenseReminder, type FinancialSetup, type SetupCategory,
 } from './financialSetup';
@@ -225,18 +225,17 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
         {step === 1 && <section className="onboarding-step income-step ant-savings-setup-step">
           <div className="onboarding-section-title"><div className="step-icon"><WalletCards size={23}/></div><div><span className="step-kicker">مرحله اول</span><h1>درآمد و پس‌انداز ماهانه</h1><p>اول درآمدت را بنویس، بعد درصدی را که می‌خواهی کنار بگذاری مشخص کن.</p></div></div>
           <Form component="div" layout="vertical" className="onboarding-ant-form">
-            <Form.Item label="درآمد ماهانه" extra={incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${money(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به تومان وارد کن.'}>
+            <Form.Item label="درآمد ماهانه" extra={incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${formatCompactToman(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به تومان وارد کن.'}>
               <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="تومان"/>
             </Form.Item>
             <Card size="small" className="savings-percentage-card">
               <div className="savings-toggle-row"><div><PiggyBank size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
               {savingsEnabled ? <div className="savings-percent-editor">
                 <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><InputNumber aria-label="درصد پس انداز" min={1} max={100} step={0.5} precision={2} controls={false} value={savingsPercent} onChange={changeSavingsPercent} addonAfter="٪"/></div>
-                <Slider min={1} max={100} step={0.5} value={savingsPercent} onChange={changeSavingsPercent} tooltip={{ formatter: value => `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(value || 0)}٪` }}/>
-                <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{money(savingsAmount)}</strong> می‌شود.</span>}/>
+                <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{formatCompactToman(savingsAmount)}</strong> می‌شود.</span>}/>
               </div> : <Alert type="info" showIcon message="فعلاً بدون پس‌انداز ادامه می‌دهی؛ بعداً از تنظیمات می‌توانی فعالش کنی."/>}
             </Card>
-            <div className="onboarding-income-summary"><Card size="small"><Statistic title={`پس‌انداز · ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪`} value={savingsAmount} formatter={() => money(savingsAmount)}/></Card><Card size="small"><Statistic title="مبلغ قابل‌هزینه" value={spendableAmount} formatter={() => money(spendableAmount)}/></Card></div>
+            <div className="onboarding-income-summary"><Card size="small"><Statistic title={`پس‌انداز · ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪`} value={savingsAmount} formatter={() => formatCompactToman(savingsAmount)}/></Card><Card size="small"><Statistic title="مبلغ قابل‌هزینه" value={spendableAmount} formatter={() => formatCompactToman(spendableAmount)}/></Card></div>
           </Form>
         </section>}
 
