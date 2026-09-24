@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Pencil, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
-import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Slider, Statistic, Switch, Tag } from 'antd';
+import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Slider, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
   createDefaultCategories, formatCompactToman, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
@@ -148,15 +148,6 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     setNewSavingsGoalError('');
   };
 
-  const skipSavingsGoals = () => {
-    setSavingsGoalChoice('no');
-    setSavingsGoals(initialSavingsPortfolio?.goals ?? []);
-    setNewSavingsGoal('');
-    setNewSavingsGoalError('');
-    setError('');
-    setStep(3);
-  };
-
   const updateSavingsGoal = (id: string, patch: Partial<SavingsGoal>) => {
     setSavingsGoals(goals => goals.map(goal => goal.id === id ? { ...goal, ...patch } : goal));
     setError('');
@@ -261,7 +252,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     <section className="onboarding-shell">
       <Card className="onboarding-card" variant="borderless">
         {step === 1 && <section className="onboarding-step income-step ant-savings-setup-step">
-          <div className="onboarding-section-title"><div className="step-icon"><WalletCards size={23}/></div><div><span className="step-kicker">مرحله ۱ از ۳</span><h1>درآمد و پس‌انداز ماهانه</h1><p>اول درآمدت را بنویس، بعد درصدی را که می‌خواهی کنار بگذاری مشخص کن.</p></div></div>
+          <div className="onboarding-section-title"><div className="step-icon"><WalletCards size={23}/></div><div><h1>درآمد و پس‌انداز ماهانه</h1><p>اول درآمدت را بنویس، بعد درصدی را که می‌خواهی کنار بگذاری مشخص کن.</p></div></div>
           <Form component="div" layout="vertical" className="onboarding-ant-form">
             <Form.Item label="درآمد ماهانه" extra={incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${formatCompactToman(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به تومان وارد کن.'}>
               <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="تومان"/>
@@ -271,31 +262,29 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
               {savingsEnabled ? <div className="savings-percent-editor">
                 <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><strong className="savings-percent-value">{new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪</strong></div>
                 <Slider className="savings-percent-slider" aria-label="درصد پس انداز" min={1} max={100} step={0.5} value={savingsPercent} onChange={changeSavingsPercent} tooltip={{ formatter: value => `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(value ?? 0)}٪` }}/>
-                <Alert type="info" showIcon message={<span>با این درصد، مبلغ پس‌اندازت <strong>{formatCompactToman(savingsAmount)}</strong> می‌شود.</span>}/>
-              </div> : <Alert type="info" showIcon message="فعلاً بدون پس‌انداز ادامه می‌دهی؛ بعداً از تنظیمات می‌توانی فعالش کنی."/>}
+                <small className="savings-percent-equivalent">معادل <strong>{formatCompactToman(savingsAmount)}</strong> در ماه</small>
+              </div> : <small className="savings-percent-equivalent">می‌تونی بعداً پس‌انداز ماهانه را فعال کنی.</small>}
             </Card>
-            <div className="onboarding-income-summary"><Card size="small"><Statistic title={`پس‌انداز · ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪`} value={savingsAmount} formatter={() => formatCompactToman(savingsAmount)}/></Card><Card size="small"><Statistic title="مبلغ قابل‌هزینه" value={spendableAmount} formatter={() => formatCompactToman(spendableAmount)}/></Card></div>
           </Form>
         </section>}
 
         {step === 2 && <section className="onboarding-step savings-goals-step savings-goal-flow">
           <div className="savings-goal-flow-heading">
-            <div className="savings-goal-flow-kicker"><span>مرحله ۲ از ۳</span><Tag bordered={false}>اختیاری</Tag></div>
-            <h1>{savingsGoalStage === 'builder' ? 'پس‌اندازت رو برای هدف‌هات کنار بذار' : 'برای ذخیره‌هات هدف بذار'}</h1>
-            <p>{savingsGoalStage === 'builder' ? <>از <strong>{formatCompactToman(onboardingSavingsTotal)}</strong> پس‌انداز این ماه، مشخص کن چقدر به هر هدف اختصاص پیدا کنه.</> : <>ذخیره‌ی این ماهت <strong>{formatCompactToman(onboardingSavingsTotal)}</strong>ـه. می‌تونی بین چند تا هدف تقسیمش کنی؛ هدف‌ها فقط برچسبن و پول اضافه‌ای حساب نمی‌شن.</>}</p>
+            <h1>{savingsGoalStage === 'builder' ? 'پس‌اندازت رو برای هدف‌هات کنار بذار' : 'برای پس‌اندازت هدف می‌ذاری؟'}</h1>
+            <p>{savingsGoalStage === 'builder' ? <>از <strong>{formatCompactToman(onboardingSavingsTotal)}</strong> پس‌انداز این ماه، مشخص کن چقدر به هر هدف اختصاص پیدا کنه.</> : <><strong>{formatCompactToman(onboardingSavingsTotal)}</strong> برای این ماه کنار گذاشتی. اگر دوست داری، بین هدف‌هات تقسیمش کن.</>}</p>
           </div>
 
           {savingsGoalStage === 'choice' ? <div className="savings-goal-choice-grid">
-            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'yes' ? 'selected' : ''}`} onClick={() => { setSavingsGoalChoice('yes'); setError(''); }}>
-              <span className="choice-radio"/><span className="choice-icon"><Target size={21}/></span><strong>آره، هدف می‌ذارم</strong><small>مثلاً سفر، ماشین یا صندوق اضطراری</small>
+            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'yes' ? 'selected' : ''}`} aria-pressed={savingsGoalChoice === 'yes'} onClick={() => { setSavingsGoalChoice('yes'); setError(''); }}>
+              <span className="choice-icon"><Target size={19}/></span><strong>بله، هدف می‌ذارم</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'yes' && <Check size={15}/>}</span>
             </Button>
-            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'no' ? 'selected' : ''}`} onClick={() => { setSavingsGoalChoice('no'); setError(''); }}>
-              <span className="choice-radio"/><span className="choice-icon neutral"><ArrowLeft size={21}/></span><strong>فعلاً نه</strong><small>بعداً از تنظیمات هم می‌تونی اضافه کنی</small>
+            <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'no' ? 'selected' : ''}`} aria-pressed={savingsGoalChoice === 'no'} onClick={() => { setSavingsGoalChoice('no'); setError(''); }}>
+              <span className="choice-icon neutral"><ArrowLeft size={19}/></span><strong>فعلاً نه</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'no' && <Check size={15}/>}</span>
             </Button>
           </div> : <>
             <Card className={`savings-allocation-overview ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`} variant="borderless">
-              <div className="allocation-overview-primary"><strong>{formatCompactToman(unallocatedSavingsAmount)}</strong><span>باقی مانده</span></div>
-              <div className="allocation-overview-meta"><span>{formatCompactToman(savingsAllocationTotal)} تخصیص داده شده</span><b>{savingsGoals.length ? `${new Intl.NumberFormat('fa-IR').format(savingsGoals.length)} هدف` : 'بدون هدف'}</b></div>
+              <div className="allocation-overview-primary"><span>بدون هدف</span><strong>{formatCompactToman(unallocatedSavingsAmount)}</strong></div>
+              <div className="allocation-overview-meta"><span>{formatCompactToman(savingsAllocationTotal)} تخصیص داده شده</span></div>
               {savingsAllocationTotal > onboardingSavingsTotal && <p>{formatCompactToman(savingsAllocationTotal - onboardingSavingsTotal)} بیشتر از پس‌انداز این ماه وارد شده است.</p>}
             </Card>
 
@@ -319,14 +308,13 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
             <div className="savings-add-goal-box">
               <div className="savings-add-goal-heading"><strong>هدف دیگه‌ای داری؟</strong><span>یکی از پیشنهادها را انتخاب کن یا اسم هدف خودت را بنویس.</span></div>
               <div className="savings-add-goal-presets">{savingsGoalPresets.filter(name => !savingsGoals.some(goal => goal.name === name)).slice(0, 4).map(name => <Button className={newSavingsGoal === name ? 'selected' : ''} key={name} onClick={() => selectSavingsGoalPreset(name)}>{savingsGoalEmoji(name)} {name.replace('خرید ', '')}</Button>)}</div>
-              <div className={`savings-add-goal-input ${newSavingsGoalError ? 'has-error' : ''}`}><Input value={newSavingsGoal} onChange={event => { setNewSavingsGoal(event.target.value); setNewSavingsGoalError(''); }} onPressEnter={() => addSavingsGoal(newSavingsGoal)} placeholder="مثلاً لپ‌تاپ جدید" aria-label="نام هدف جدید"/><Button type="primary" icon={<Plus size={16}/>} onClick={() => addSavingsGoal(newSavingsGoal)}>افزودن</Button></div>
+              <div className={`savings-add-goal-input ${newSavingsGoalError ? 'has-error' : ''}`}><Input value={newSavingsGoal} onChange={event => { setNewSavingsGoal(event.target.value); setNewSavingsGoalError(''); }} onPressEnter={() => addSavingsGoal(newSavingsGoal)} placeholder="مثلاً لپ‌تاپ جدید" aria-label="نام هدف جدید"/><Button type="primary" icon={<Plus size={18}/>} aria-label="افزودن هدف" onClick={() => addSavingsGoal(newSavingsGoal)}/></div>
               {newSavingsGoalError && <small className="savings-add-goal-error" role="alert">{newSavingsGoalError}</small>}
             </div>
           </>}
         </section>}
 
         {step === 3 && <section className="onboarding-step categories-step">
-          <span className="step-kicker">مرحله ۳ از ۳</span>
           <h1>درآمدت را چطور تقسیم می‌کنی؟</h1>
           <p>برای هر دسته مبلغ یا درصد وارد کن؛ مقدار مقابل همان لحظه محاسبه می‌شود. لازم نیست تمام مبلغ را تخصیص بدهی.</p>
           <div className={`allocation-summary ${remainingAmount < 0 ? 'over' : remainingAmount === 0 ? 'complete' : ''}`}>
@@ -377,9 +365,8 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
         </section>}
 
         {error && <Alert className="onboarding-error" type="error" showIcon message={error}/>}
-        <footer className={`onboarding-actions ${step === 2 && savingsGoalStage === 'builder' ? 'has-skip' : ''}`}>
+        <footer className="onboarding-actions">
           {step > 1 ? <Button className="previous-button" icon={<ArrowRight size={18}/>} onClick={previousStep}>قبلی</Button> : <span/>}
-          {step === 2 && savingsGoalStage === 'builder' && <Button type="text" className="skip-goals-button" onClick={skipSavingsGoals}>فعلاً رد شو</Button>}
           {step < 4 ? <Button type="primary" className="next-button" onClick={nextStep}>ادامه <ArrowLeft size={18}/></Button> : <Button type="primary" className="next-button" loading={saving} icon={!saving ? <Check size={18}/> : undefined} onClick={complete}>تأیید نهایی</Button>}
         </footer>
       </Card>
