@@ -30,13 +30,22 @@ export function legacySourceKeys(userId: string, email: string, activeUserKey = 
 export function readLegacyPayload(storage: StorageReader, sourceKey: string, authenticatedEmail: string): LegacyPayload {
   const storedProfile = readJson<CloudProfile | null>(storage, `gav-profile-v1:${sourceKey}`, null);
   const profileMatches = !storedProfile?.email || storedProfile.email.trim().toLowerCase() === authenticatedEmail.trim().toLowerCase();
+  const rawSetup = readJson<FinancialSetup | null>(storage, setupStorageKey(sourceKey), null);
+  const oldTomanValues = rawSetup?.currency !== 'IRR' && storage.getItem(`gav-money-unit-v1:${sourceKey}`) !== 'IRR';
+  const toRial = (amount: number) => {
+    const converted = oldTomanValues ? amount * 10 : amount;
+    if (!Number.isSafeInteger(converted)) throw new Error('مبلغ قدیمی از محدوده مجاز ریال بزرگ‌تر است.');
+    return converted;
+  };
+  const budgets = readJson<BudgetMap>(storage, `gav-budgets-v3:${sourceKey}`, {});
+  const weeklyBudgets = readJson<WeeklyBudgetStore>(storage, `gav-weekly-budgets-v1:${sourceKey}`, {});
   return {
     sourceKey,
     profile: storedProfile && profileMatches ? storedProfile : null,
-    transactions: normalizeTransactions(readJson<unknown[]>(storage, `gav-transactions-v2:${sourceKey}`, [])),
-    budgets: readJson<BudgetMap>(storage, `gav-budgets-v3:${sourceKey}`, {}),
-    weeklyBudgets: readJson<WeeklyBudgetStore>(storage, `gav-weekly-budgets-v1:${sourceKey}`, {}),
-    financialSetup: normalizeFinancialSetup(readJson<unknown>(storage, setupStorageKey(sourceKey), null)),
+    transactions: normalizeTransactions(readJson<unknown[]>(storage, `gav-transactions-v2:${sourceKey}`, [])).map(transaction => ({ ...transaction, amount: toRial(transaction.amount) })),
+    budgets: Object.fromEntries(Object.entries(budgets).map(([category, amount]) => [category, toRial(amount)])),
+    weeklyBudgets: Object.fromEntries(Object.entries(weeklyBudgets).map(([period, values]) => [period, Object.fromEntries(Object.entries(values).map(([category, amount]) => [category, toRial(amount)]))])),
+    financialSetup: normalizeFinancialSetup(rawSetup),
     fcmToken: sourceKey === 'local-user' ? storage.getItem('gav-fcm-token') : null,
   };
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addCategory, budgetsFromFinancialSetup, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, createCompletedSetup, createDefaultCategories,
-  formatCompactToman, loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
+  formatCompactRial, loadFinancialSetup, millisecondsUntilReminder, normalizeFinancialSetup, parseNonNegativeInteger, parsePositiveInteger, percentageToBps,
   removeCategory, saveFinancialSetup, shouldShowNewUserIntro, totalPercentageBps, validateBudgetAllocationLimit, validateFinancialSetup,
 } from './financialSetup';
 
@@ -14,7 +14,7 @@ function memoryStorage() {
 }
 
 describe('financial setup calculations', () => {
-  it('parses Persian and English money input as integer toman', () => {
+  it('parses Persian and English money input as integer rials', () => {
     expect(parsePositiveInteger('۱۲٬۵۰۰٬۰۰۰')).toBe(12_500_000);
     expect(parsePositiveInteger('12500000')).toBe(12_500_000);
     expect(parsePositiveInteger('-12')).toBeNull();
@@ -22,11 +22,11 @@ describe('financial setup calculations', () => {
     expect(parseNonNegativeInteger('۰')).toBe(0);
   });
 
-  it('formats money with an automatic readable toman unit', () => {
-    expect(formatCompactToman(68_000_000)).toBe('۶۸ میلیون تومان');
-    expect(formatCompactToman(1_250_000_000)).toBe('۱٫۲۵ میلیارد تومان');
-    expect(formatCompactToman(750_000)).toBe('۷۵۰ هزار تومان');
-    expect(formatCompactToman(900)).toBe('۹۰۰ تومان');
+  it('formats money with an automatic readable rial unit', () => {
+    expect(formatCompactRial(68_000_000)).toBe('۶۸ میلیون ریال');
+    expect(formatCompactRial(1_250_000_000)).toBe('۱٫۲۵ میلیارد ریال');
+    expect(formatCompactRial(750_000)).toBe('۷۵۰ هزار ریال');
+    expect(formatCompactRial(900)).toBe('۹۰۰ ریال');
   });
 
   it('stores percentage as basis points', () => {
@@ -62,7 +62,7 @@ describe('financial setup calculations', () => {
 
   it('prevents category budget edits from exceeding the spendable amount', () => {
     expect(validateBudgetAllocationLimit(10_000_000, { مسکن: 6_000_000, خوراک: 4_000_000 })).toBeNull();
-    expect(validateBudgetAllocationLimit(10_000_000, { مسکن: 7_000_000, خوراک: 4_000_000 })).toContain('۱٬۰۰۰٬۰۰۰ تومان');
+    expect(validateBudgetAllocationLimit(10_000_000, { مسکن: 7_000_000, خوراک: 4_000_000 })).toContain('۱٬۰۰۰٬۰۰۰ ریال');
   });
 });
 
@@ -82,6 +82,16 @@ describe('category management', () => {
 });
 
 describe('persistence and completion', () => {
+  it('converts a cached toman plan to rial exactly once', () => {
+    const plan = createCompletedSetup(200_000_000, 1000, createDefaultCategories(), { enabled: false, time: '21:00', timezone: 'Asia/Tehran' });
+    const cachedToman = { ...plan, currency: 'TOMAN', monthlyIncome: 20_000_000, savingsTargetAmount: 2_000_000, categories: plan.categories.map(category => ({ ...category, amount: category.amount / 10 })) };
+    const migrated = normalizeFinancialSetup(cachedToman);
+    expect(migrated?.currency).toBe('IRR');
+    expect(migrated?.monthlyIncome).toBe(plan.monthlyIncome);
+    expect(migrated?.categories[0].amount).toBe(plan.categories[0].amount);
+    expect(normalizeFinancialSetup(migrated)?.monthlyIncome).toBe(plan.monthlyIncome);
+  });
+
   it('shows both the product intro and financial setup for every new user', () => {
     const completed = createCompletedSetup(20_000_000, 1000, createDefaultCategories(), {
       enabled: false,
@@ -134,7 +144,7 @@ describe('persistence and completion', () => {
     const migrated = normalizeFinancialSetup(legacy);
     expect(migrated?.version).toBe(4);
     expect(migrated?.savingsPercentBps).toBe(0);
-    expect(calculateSpendableAmount(migrated!.monthlyIncome, migrated!.savingsPercentBps)).toBe(12_000_000);
+    expect(calculateSpendableAmount(migrated!.monthlyIncome, migrated!.savingsPercentBps)).toBe(120_000_000);
   });
 
   it('migrates a legacy amount-based target to a savings percentage', () => {

@@ -54,7 +54,7 @@ type ApiFinancialPlan = {
   monthlyIncome: string | number;
   savingsPercentBps: number;
   savingsTargetAmount?: string | number;
-  currency: 'TOMAN';
+  currency: 'IRR';
   onboardingCompleted: boolean;
   reminder: FinancialSetup['reminder'];
   updatedAt?: string;

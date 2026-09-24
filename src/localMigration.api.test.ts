@@ -38,7 +38,7 @@ describe('localStorage to API migration', () => {
 
     const counts = await migrateLocalStorageToApi(storage, 'user-1', 'h@example.com');
 
-    expect(mocks.saveCloudTransaction).toHaveBeenCalledWith('user-1', expect.objectContaining({ id: 'legacy-1', amount: 1234 }));
+    expect(mocks.saveCloudTransaction).toHaveBeenCalledWith('user-1', expect.objectContaining({ id: 'legacy-1', amount: 12340 }));
     expect(mocks.markMigration).toHaveBeenNthCalledWith(1, 'user-1', 'localstorage-v1:local-user', 'started');
     expect(mocks.markMigration).toHaveBeenLastCalledWith('user-1', 'localstorage-v1:local-user', 'completed', expect.objectContaining({ transactions: 1 }));
     expect(storage.getItem(transactionKey)).toBe(original);

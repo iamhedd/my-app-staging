@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   budgetsInputSchema,
   categoriesInputSchema,
+  financialPlanInputSchema,
   migrationRunInputSchema,
   moneySchema,
   reviewCommentInputSchema,
@@ -15,6 +16,16 @@ test('money values are normalized to decimal strings', () => {
   assert.equal(moneySchema.parse('0012345'), '12345');
   assert.throws(() => moneySchema.parse('12.5'));
   assert.throws(() => moneySchema.parse('9007199254740992'));
+});
+
+test('financial plans use rial and reject the old toman unit', () => {
+  const plan = {
+    monthlyIncome: '200000000', savingsPercentBps: 1000, savingsTargetAmount: '20000000',
+    currency: 'IRR', onboardingCompleted: true,
+    reminder: { enabled: false, time: '21:00', timezone: 'Asia/Tehran' },
+  };
+  assert.equal(financialPlanInputSchema.safeParse(plan).success, true);
+  assert.equal(financialPlanInputSchema.safeParse({ ...plan, currency: 'TOMAN' }).success, false);
 });
 
 test('categories reject duplicate client ids and names', () => {

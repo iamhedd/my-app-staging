@@ -1173,13 +1173,14 @@ body{color:var(--ink)}
 .savings-goal-flow-heading p strong{color:var(--ink)}
 
 .savings-goal-choice-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;max-width:520px;width:100%;margin-inline:auto}
-.ant-btn.savings-goal-choice-option{display:grid;grid-template-columns:36px minmax(0,1fr) 20px;align-items:center;gap:10px;width:100%;height:58px;padding:8px 13px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:none;text-align:right;white-space:normal}
+.ant-btn.savings-goal-choice-option{display:grid;grid-template-columns:minmax(0,1fr) 20px;align-items:center;gap:10px;width:100%;height:52px;padding:8px 14px;border:1px solid var(--border);border-radius:13px;background:#fff;box-shadow:none;text-align:right;white-space:normal}
 .ant-btn.savings-goal-choice-option:hover{border-color:var(--brand-soft);color:var(--ink)}
 .ant-btn.savings-goal-choice-option.selected{border-color:var(--brand-accent);background:#fff9fb}
 .savings-goal-choice-option .choice-icon{width:36px;height:36px;display:grid;place-items:center;border-radius:10px;background:var(--brand-tint);color:var(--brand-accent-dark)}
 .savings-goal-choice-option .choice-icon.neutral{background:var(--neutral-soft);color:var(--muted)}
 .savings-goal-choice-option>strong{min-width:0;font-size:12px;color:var(--ink)}
 .savings-goal-choice-option .choice-selection{display:grid;place-items:center;color:var(--brand-accent-dark)}
+.allocation-value-field .money-input-equivalent{display:block;margin-top:5px;color:var(--muted);font-size:10px}
 
 .savings-allocation-overview.ant-card{border:0;border-radius:18px;background:var(--brand-tint);box-shadow:none}
 .savings-allocation-overview>.ant-card-body{padding:15px 18px}

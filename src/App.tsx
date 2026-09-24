@@ -28,7 +28,8 @@ import { isCategoryImage } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { jalaaliMonthLength } from 'jalaali-js';
 import { defaultDevSettings, devSettingsStorageKey, interpolateDevText, normalizeDevSettings, type DevSettings } from './devSettings';
-import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, formatCompactToman, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, validateBudgetAllocationLimit, type FinancialSetup } from './financialSetup';
+import { budgetsFromFinancialSetup, calculateSavingsAmount, calculateSpendableAmount, formatCompactRial, millisecondsUntilReminder, normalizeFinancialSetup, setupStorageKey, shouldShowNewUserIntro, validateBudgetAllocationLimit, type FinancialSetup } from './financialSetup';
+import { formatRial, formatTomanEquivalent } from './currency';
 import {
   allocateMonthlyAmountByWeek, displayJalaliDate, isInJalaliMonth, jalaliDateKey, jalaliMonthNames, jalaliToDate,
   millisecondsUntilNextLocalDay, monthFromOffset, parseJalaliDate, recentJalaliMonths, todayJalali, toPersianDigits, weeksOfJalaliMonth, type JalaliMonth,
@@ -78,7 +79,7 @@ const profileStorageKey = (userKey: string) => `gav-profile-v1:${userKey}`;
 const budgetAlertLedgerKey = (userKey: string) => `gav-budget-alert-ledger-v1:${userKey}`;
 const nightlyReminderKey = (userKey: string) => `gav-nightly-reminder-last-v1:${userKey}`;
 
-const formatMoney = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
+const formatMoney = formatRial;
 const budgetCardMoney = (value: number) => formatMoney(value);
 function useStoredState<T>(key: string, fallback: T) {
   const [value, setValue] = useState<T>(() => {
@@ -239,6 +240,7 @@ export default function App() {
     localStorage.setItem(`gav-budgets-v3:${userId}`, JSON.stringify(cloud.budgets));
     localStorage.setItem(`gav-weekly-budgets-v1:${userId}`, JSON.stringify(cloud.weeklyBudgets));
     localStorage.setItem(setupStorageKey(userId), JSON.stringify(cloud.financialSetup));
+    localStorage.setItem(`gav-money-unit-v1:${userId}`, 'IRR');
     localStorage.setItem(`gav-savings-v1:${userId}`, JSON.stringify(cloud.savingsPortfolio));
     setProfile(cloud.profile);
     setTransactions(cloud.transactions);
@@ -715,7 +717,7 @@ function Dashboard({ settings, profile, month, plan, categoryOptions, transactio
         <div className="chart-wrap"><ResponsiveContainer width="100%" height="100%"><AreaChart data={trendData}><defs><linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#DF7899" stopOpacity={0.38}/><stop offset="100%" stopColor="#DF7899" stopOpacity={0}/></linearGradient></defs><CartesianGrid stroke="#E8E8E8" vertical={false}/><XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#707070', fontSize: 12 }}/><YAxis hide/><Tooltip contentStyle={{ border: 'none', borderRadius: 16, boxShadow: '0 12px 40px #1717171a', direction: 'rtl' }} formatter={(v) => [formatMoney(Number(v) * 1000), 'هزینه']}/><Area type="monotone" dataKey="value" stroke="#171717" strokeWidth={2.5} fill="url(#trendFill)" dot={{ r: 3, fill: '#171717', strokeWidth: 0 }} activeDot={{ r: 6, fill: '#DF7899', strokeWidth: 3, stroke: '#fff' }}/></AreaChart></ResponsiveContainer></div>
       </Card>
       <Card className="panel category-panel" variant="borderless"><PanelTitle title="هزینه بر اساس دسته" subtitle="سهم دسته‌ها از کل هزینه" />
-        <div className={`donut-row ${byCategory.length ? '' : 'empty'}`}><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{formatCompactToman(expense)}</strong><span>کل هزینه</span></div></div>
+        <div className={`donut-row ${byCategory.length ? '' : 'empty'}`}><div className="donut"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={byCategory} dataKey="value" innerRadius={55} outerRadius={77} paddingAngle={3} stroke="none">{byCategory.map(c => <Cell key={c.name} fill={c.color}/>)}</Pie></PieChart></ResponsiveContainer><div className="donut-center"><strong>{formatCompactRial(expense)}</strong><span>کل هزینه</span></div></div>
           <div className="legend">{byCategory.slice(0, 5).map(c => <div key={c.name}><span style={{ background: c.color }}></span><label>{c.name}</label><b>{Math.round(c.value / Math.max(expense, 1) * 100)}٪</b></div>)}{!byCategory.length && <div className="dashboard-category-empty">هنوز هزینه‌ای ثبت نشده است.</div>}</div>
         </div>
       </Card>
@@ -914,7 +916,7 @@ function Budgets({ month, plan, categoryOptions, transactions, budgets, setBudge
     })}</div>
     <Modal open={Boolean(editing)} title={`بودجه ماهانه ${editing || ''}`} onCancel={() => !savingBudget && setEditing(null)} footer={null} destroyOnHidden>
       <p className="ant-modal-description">با تغییر بودجه ماهانه، سقف تمام هفته‌های {month.label} خودکار محاسبه می‌شود.</p>
-      <Form layout="vertical" onFinish={save} requiredMark={false}><Form.Item label="بودجه ماهانه" extra={amount !== '' ? `معادل ${formatCompactToman(Number(amount))}` : 'مبلغ را به تومان وارد کن.'}><InputNumber autoFocus className="ant-money-input" min={0} precision={0} value={amount === '' ? null : Number(amount)} disabled={savingBudget} onChange={value => setAmount(value === null ? '' : String(value))} addonAfter="تومان"/></Form.Item>{budgetError && <Alert type="error" showIcon message={budgetError}/>}<div className="ant-modal-actions"><Button disabled={savingBudget} onClick={() => setEditing(null)}>انصراف</Button><Button type="primary" htmlType="submit" loading={savingBudget}>{budgetError ? 'تلاش دوباره' : 'ذخیره تغییرات'}</Button></div></Form>
+      <Form layout="vertical" onFinish={save} requiredMark={false}><Form.Item label="بودجه ماهانه" extra={formatTomanEquivalent(amount === '' ? null : Number(amount))}><InputNumber autoFocus className="ant-money-input" min={0} precision={0} value={amount === '' ? null : Number(amount)} disabled={savingBudget} onChange={value => setAmount(value === null ? '' : String(value))} addonAfter="ریال"/></Form.Item>{budgetError && <Alert type="error" showIcon message={budgetError}/>}<div className="ant-modal-actions"><Button disabled={savingBudget} onClick={() => setEditing(null)}>انصراف</Button><Button type="primary" htmlType="submit" loading={savingBudget}>{budgetError ? 'تلاش دوباره' : 'ذخیره تغییرات'}</Button></div></Form>
     </Modal>
   </>;
 }
@@ -1078,8 +1080,8 @@ function TransactionModal({ initialTransaction, initialDate, categoryOptions, on
       <Form.Item label="عنوان تراکنش" required>
         <Input autoFocus value={title} onChange={event => setTitle(event.target.value)} placeholder={type === 'savings' ? 'مثلاً انتقال به حساب پس‌انداز' : 'مثلاً خرید روزانه'}/>
       </Form.Item>
-      <Form.Item label="مبلغ" required extra={amount ? `معادل ${formatCompactToman(Number(amount))}` : 'مبلغ را به تومان وارد کن.'}>
-        <InputNumber className="ant-money-input" min={1} precision={0} value={amount ? Number(amount) : null} onChange={value => setAmount(value === null ? '' : String(value))} placeholder="۰" addonAfter="تومان"/>
+      <Form.Item label="مبلغ" required extra={formatTomanEquivalent(amount ? Number(amount) : null)}>
+        <InputNumber className="ant-money-input" min={1} precision={0} value={amount ? Number(amount) : null} onChange={value => setAmount(value === null ? '' : String(value))} placeholder="۰" addonAfter="ریال"/>
       </Form.Item>
       {type === 'expense' && <Form.Item label="دسته‌بندی"><Select value={category} onChange={setCategory} options={categoryOptions.map(item => ({ value: item.name, label: item.name }))}/></Form.Item>}
       <Form.Item label={<span className="form-label-icon"><CalendarDays size={16}/>تاریخ شمسی</span>} required>

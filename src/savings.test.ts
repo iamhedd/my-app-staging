@@ -1,7 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { allocatedSavings, createSavingsPortfolio, onboardingSavingsBalance, recentGoalProgress, savingsGoalProjection, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot } from './savings';
+import { allocatedSavings, createSavingsPortfolio, onboardingSavingsBalance, recentGoalProgress, savingsGoalProjection, setGoalMonthlyAllocation, unallocatedSavings, validateSavingsPortfolio, withGoalProgressSnapshot } from './savings';
 
 describe('savings portfolio', () => {
+  it('changes only the selected goal after a monthly amount is committed', () => {
+    const goals = [
+      { id: 'travel', name: 'سفر', allocatedAmount: 0, monthlyContribution: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] },
+      { id: 'car', name: 'ماشین', allocatedAmount: 0, monthlyContribution: 0, targetAmount: null, targetDate: null, completed: false, progressHistory: [] },
+    ];
+    const updated = setGoalMonthlyAllocation(goals, 'car', 2_000_000);
+    expect(updated[0]).toBe(goals[0]);
+    expect(updated[1].allocatedAmount).toBe(2_000_000);
+    expect(updated[1].monthlyContribution).toBe(2_000_000);
+  });
   it('treats goals as allocations, not extra assets', () => {
     const portfolio = {
       ...createSavingsPortfolio(20_000_000, '1405/07'),

@@ -83,7 +83,7 @@ describe('API persistence contracts', () => {
       profile: { name: 'هدیه', email: 'hediyeh@example.com', avatarUrl: null },
       role: 'admin',
       financialPlan: {
-        monthlyIncome: '10000000', savingsPercentBps: 1000, currency: 'TOMAN', onboardingCompleted: true,
+        monthlyIncome: '10000000', savingsPercentBps: 1000, currency: 'IRR', onboardingCompleted: true,
         reminder: { enabled: true, time: '21:00', timezone: 'Asia/Tehran' }, updatedAt: '2026-09-16T00:00:00.000Z',
       },
       categories: [{ id: 'food', name: 'خوراک', percentageBps: 2500, amount: '2250000', allocationMode: 'amount', color: '#df7899', icon: 'food' }],

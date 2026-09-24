@@ -34,7 +34,7 @@ export const financialPlanInputSchema = z.object({
   monthlyIncome: positiveMoneySchema,
   savingsPercentBps: z.number().int().min(0).max(10_000),
   savingsTargetAmount: moneySchema.optional(),
-  currency: z.literal('TOMAN').default('TOMAN'),
+  currency: z.literal('IRR').default('IRR'),
   onboardingCompleted: z.boolean(),
   reminder: z.object({
     enabled: z.boolean(),

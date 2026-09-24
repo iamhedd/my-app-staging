@@ -1,17 +1,18 @@
 import { useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Pencil, Plus, Smile, Target, Trash2, Vault, WalletCards } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Bell, Check, ChevronDown, CircleDollarSign, Clock3, Pencil, Plus, Smile, Trash2, Vault, WalletCards } from 'lucide-react';
 import { Alert, Button, Card, Form, Input, InputNumber, Modal, Popover, Progress, Segmented, Slider, Switch } from 'antd';
 import {
   addCategory, calculateCategoryAmounts, calculateSavingsAmount, calculateSpendableAmount, colorPalette, createCompletedSetup,
-  createDefaultCategories, formatCompactToman, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
+  createDefaultCategories, formatCompactRial, parseNonNegativeInteger, parsePositiveInteger, percentageToBps, removeCategory,
   validateFinancialSetup,
   type ExpenseReminder, type FinancialSetup, type SetupCategory,
 } from './financialSetup';
 import { categoryEmoji, categoryEmojiPalette, categoryIconLabel } from './categoryEmoji';
 import CategoryIconVisual from './CategoryIconVisual';
 import { displayJalaliDate, monthFromOffset, parseJalaliDate } from './dateUtils';
-import { createSavingsPortfolio, formatSavingsDuration, onboardingSavingsBalance, savingsGoalProjection, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
+import { createSavingsPortfolio, formatSavingsDuration, onboardingSavingsBalance, savingsGoalProjection, setGoalMonthlyAllocation, withGoalProgressSnapshot, type SavingsGoal, type SavingsPortfolio } from './savings';
 import JalaliDatePicker from './JalaliDatePicker';
+import { formatRial, formatTomanEquivalent } from './currency';
 
 type Props = {
   initialSetup: FinancialSetup | null;
@@ -20,7 +21,7 @@ type Props = {
   onCancel?: () => void;
 };
 
-const money = (value: number) => `${new Intl.NumberFormat('fa-IR').format(value)} تومان`;
+const money = formatRial;
 
 const savingsGoalPresets = ['صندوق اضطراری', 'سفر', 'خرید ماشین', 'خرید خانه', 'سرمایه‌گذاری', 'خرید لپ‌تاپ', 'سایر'];
 const savingsGoalEmoji = (name: string) => name.includes('سفر') ? '✈️' : name.includes('اضطرار') ? '🛡️' : name.includes('ماشین') ? '🚗' : name.includes('خانه') ? '🏠' : name.includes('سرمایه') ? '📈' : name.includes('لپ‌تاپ') ? '💻' : '🎯';
@@ -36,6 +37,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
   const [savingsGoalChoice, setSavingsGoalChoice] = useState<'yes' | 'no' | null>(() => initialSavingsPortfolio ? (initialSavingsPortfolio.goals.length ? 'yes' : 'no') : null);
   const [savingsGoalStage, setSavingsGoalStage] = useState<'choice' | 'builder'>('choice');
   const [savingsGoals, setSavingsGoals] = useState<SavingsGoal[]>(initialSavingsPortfolio?.goals ?? []);
+  const [goalContributionDrafts, setGoalContributionDrafts] = useState<Record<string, number | null>>({});
   const [editingSavingsGoalId, setEditingSavingsGoalId] = useState<string | null>(null);
   const [newSavingsGoal, setNewSavingsGoal] = useState('');
   const [newSavingsGoalError, setNewSavingsGoalError] = useState('');
@@ -153,6 +155,20 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     setError('');
   };
 
+  const commitGoalContribution = (goal: SavingsGoal) => {
+    const draft = goalContributionDrafts[goal.id];
+    if (draft === undefined) return;
+    const amount = draft ?? 0;
+    if (!Number.isSafeInteger(amount) || amount < 0) return setError('مبلغ ماهانه هدف معتبر نیست.');
+    setSavingsGoals(goals => setGoalMonthlyAllocation(goals, goal.id, amount));
+    setError('');
+    setGoalContributionDrafts(drafts => {
+      const next = { ...drafts };
+      delete next[goal.id];
+      return next;
+    });
+  };
+
   const validateSavingsGoals = () => {
     if (!savingsGoalChoice) return 'انتخاب کن که می‌خواهی پس‌اندازت را هدف‌بندی کنی یا نه.';
     if (savingsGoalChoice === 'no') return null;
@@ -254,15 +270,15 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
         {step === 1 && <section className="onboarding-step income-step ant-savings-setup-step">
           <div className="onboarding-section-title"><div className="step-icon"><WalletCards size={23}/></div><div><h1>درآمد و پس‌انداز ماهانه</h1><p>اول درآمدت را بنویس، بعد درصدی را که می‌خواهی کنار بگذاری مشخص کن.</p></div></div>
           <Form component="div" layout="vertical" className="onboarding-ant-form">
-            <Form.Item label="درآمد ماهانه" extra={incomeInput && parsePositiveInteger(incomeInput) ? `معادل ${formatCompactToman(parsePositiveInteger(incomeInput)!)} در ماه` : 'مبلغ را به تومان وارد کن.'}>
-              <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="تومان"/>
+            <Form.Item label="درآمد ماهانه" extra={formatTomanEquivalent(parsePositiveInteger(incomeInput))}>
+              <Input className="income-input" id="monthly-income" inputMode="numeric" value={incomeInput} onChange={event => changeIncome(event.target.value)} placeholder="مثلاً ۴۵۰۰۰۰۰۰۰" prefix={<CircleDollarSign size={19}/>} suffix="ریال"/>
             </Form.Item>
             <Card size="small" className="savings-percentage-card">
               <div className="savings-toggle-row"><div><Vault size={19}/><span><strong>پس‌انداز ماهانه</strong><small>درصدی از درآمدت را کنار بگذار.</small></span></div><Switch checked={savingsEnabled} onChange={toggleSavings}/></div>
               {savingsEnabled ? <div className="savings-percent-editor">
                 <div className="savings-percent-heading"><span>چند درصد پس‌انداز می‌کنی؟</span><strong className="savings-percent-value">{new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(savingsPercent)}٪</strong></div>
                 <Slider className="savings-percent-slider" aria-label="درصد پس انداز" min={1} max={100} step={0.5} value={savingsPercent} onChange={changeSavingsPercent} tooltip={{ formatter: value => `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(value ?? 0)}٪` }}/>
-                <small className="savings-percent-equivalent">معادل <strong>{formatCompactToman(savingsAmount)}</strong> در ماه</small>
+                <small className="savings-percent-equivalent">معادل <strong>{formatCompactRial(savingsAmount)}</strong> در ماه</small>
               </div> : <small className="savings-percent-equivalent">می‌تونی بعداً پس‌انداز ماهانه را فعال کنی.</small>}
             </Card>
           </Form>
@@ -271,21 +287,21 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
         {step === 2 && <section className="onboarding-step savings-goals-step savings-goal-flow">
           <div className="savings-goal-flow-heading">
             <h1>{savingsGoalStage === 'builder' ? 'پس‌اندازت رو برای هدف‌هات کنار بذار' : 'برای پس‌اندازت هدف می‌ذاری؟'}</h1>
-            <p>{savingsGoalStage === 'builder' ? <>از <strong>{formatCompactToman(onboardingSavingsTotal)}</strong> پس‌انداز این ماه، مشخص کن چقدر به هر هدف اختصاص پیدا کنه.</> : <><strong>{formatCompactToman(onboardingSavingsTotal)}</strong> برای این ماه کنار گذاشتی. اگر دوست داری، بین هدف‌هات تقسیمش کن.</>}</p>
+            <p>{savingsGoalStage === 'builder' ? <>از <strong>{formatCompactRial(onboardingSavingsTotal)}</strong> پس‌انداز این ماه، مشخص کن چقدر به هر هدف اختصاص پیدا کنه.</> : <><strong>{formatCompactRial(onboardingSavingsTotal)}</strong> برای این ماه کنار گذاشتی. اگر دوست داری، بین هدف‌هات تقسیمش کن.</>}</p>
           </div>
 
           {savingsGoalStage === 'choice' ? <div className="savings-goal-choice-grid">
             <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'yes' ? 'selected' : ''}`} aria-pressed={savingsGoalChoice === 'yes'} onClick={() => { setSavingsGoalChoice('yes'); setError(''); }}>
-              <span className="choice-icon"><Target size={19}/></span><strong>بله، هدف می‌ذارم</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'yes' && <Check size={15}/>}</span>
+              <strong>بله، هدف می‌ذارم</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'yes' && <Check size={15}/>}</span>
             </Button>
             <Button className={`savings-goal-choice-option ${savingsGoalChoice === 'no' ? 'selected' : ''}`} aria-pressed={savingsGoalChoice === 'no'} onClick={() => { setSavingsGoalChoice('no'); setError(''); }}>
-              <span className="choice-icon neutral"><ArrowLeft size={19}/></span><strong>فعلاً نه</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'no' && <Check size={15}/>}</span>
+              <strong>فعلاً نه</strong><span className="choice-selection" aria-hidden="true">{savingsGoalChoice === 'no' && <Check size={15}/>}</span>
             </Button>
           </div> : <>
             <Card className={`savings-allocation-overview ${savingsAllocationTotal > onboardingSavingsTotal ? 'over' : ''}`} variant="borderless">
-              <div className="allocation-overview-primary"><span>بدون هدف</span><strong>{formatCompactToman(unallocatedSavingsAmount)}</strong></div>
-              <div className="allocation-overview-meta"><span>{formatCompactToman(savingsAllocationTotal)} تخصیص داده شده</span></div>
-              {savingsAllocationTotal > onboardingSavingsTotal && <p>{formatCompactToman(savingsAllocationTotal - onboardingSavingsTotal)} بیشتر از پس‌انداز این ماه وارد شده است.</p>}
+              <div className="allocation-overview-primary"><span>بدون هدف</span><strong>{formatCompactRial(unallocatedSavingsAmount)}</strong></div>
+              <div className="allocation-overview-meta"><span>{formatCompactRial(savingsAllocationTotal)} تخصیص داده شده</span></div>
+              {savingsAllocationTotal > onboardingSavingsTotal && <p>{formatCompactRial(savingsAllocationTotal - onboardingSavingsTotal)} بیشتر از پس‌انداز این ماه وارد شده است.</p>}
             </Card>
 
             <div className="savings-goal-summary-list">{savingsGoals.map(goal => {
@@ -293,14 +309,13 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
               const missingTargetAmount = !goal.targetAmount;
               const missingTargetDate = !goal.targetDate;
               const missingDetails = missingTargetAmount || missingTargetDate;
-              const availableForGoal = Math.max(0, onboardingSavingsTotal - savingsAllocationTotal + goal.allocatedAmount);
               return <Card key={goal.id} className="savings-goal-summary-card" variant="borderless">
-                <div className="goal-summary-main"><span className="goal-summary-emoji">{savingsGoalEmoji(goal.name)}</span><div className="goal-summary-copy"><div className="goal-summary-title"><strong>{goal.name}</strong><Button type="text" icon={<Pencil size={15}/>} aria-label={`ویرایش ${goal.name}`} onClick={() => setEditingSavingsGoalId(goal.id)}/></div>{missingDetails ? <div className="goal-summary-incomplete"><span>هدف هنوز کامل نشده</span><Button type="link" onClick={() => setEditingSavingsGoalId(goal.id)}>{missingTargetAmount && missingTargetDate ? 'تکمیل مبلغ و تاریخ' : missingTargetAmount ? 'تکمیل مبلغ هدف' : 'تکمیل تاریخ هدف'}</Button></div> : <small>هدف {formatCompactToman(goal.targetAmount!)} · تا {displayJalaliDate(goal.targetDate!)}</small>}</div></div>
-                <div className="goal-summary-allocation-editor"><label htmlFor={`goal-allocation-${goal.id}`}>مبلغ ماهانه برای این هدف</label><InputNumber id={`goal-allocation-${goal.id}`} aria-label={`مبلغ ماهانه ${goal.name}`} className="goal-allocation-input" min={0} max={availableForGoal} precision={0} controls={false} value={goal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(goal.id, { allocatedAmount: value || 0, monthlyContribution: value || 0 })} addonAfter="تومان"/><small>{goal.monthlyContribution ? `معادل ${formatCompactToman(goal.monthlyContribution)} در ماه` : 'مبلغ ماهانه را وارد کن.'}</small></div>
+                <div className="goal-summary-main"><span className="goal-summary-emoji">{savingsGoalEmoji(goal.name)}</span><div className="goal-summary-copy"><div className="goal-summary-title"><strong>{goal.name}</strong><Button type="text" icon={<Pencil size={15}/>} aria-label={`ویرایش ${goal.name}`} onClick={() => setEditingSavingsGoalId(goal.id)}/></div>{missingDetails ? <div className="goal-summary-incomplete"><span>هدف هنوز کامل نشده</span><Button type="link" onClick={() => setEditingSavingsGoalId(goal.id)}>{missingTargetAmount && missingTargetDate ? 'تکمیل مبلغ و تاریخ' : missingTargetAmount ? 'تکمیل مبلغ هدف' : 'تکمیل تاریخ هدف'}</Button></div> : <small>هدف {formatCompactRial(goal.targetAmount!)} · تا {displayJalaliDate(goal.targetDate!)}</small>}</div></div>
+                <div className="goal-summary-allocation-editor"><label htmlFor={`goal-allocation-${goal.id}`}>مبلغ ماهانه برای این هدف</label><InputNumber id={`goal-allocation-${goal.id}`} aria-label={`مبلغ ماهانه ${goal.name}`} className="goal-allocation-input" min={0} precision={0} controls={false} value={goalContributionDrafts[goal.id] === undefined ? goal.monthlyContribution ?? 0 : goalContributionDrafts[goal.id]} onChange={value => setGoalContributionDrafts(drafts => ({ ...drafts, [goal.id]: value }))} onBlur={() => commitGoalContribution(goal)} addonAfter="ریال"/><small>{formatTomanEquivalent(goalContributionDrafts[goal.id] === undefined ? goal.monthlyContribution ?? 0 : goalContributionDrafts[goal.id])}</small></div>
                 <div className={`goal-plan-preview ${missingDetails ? 'incomplete' : projection.status}`}>
                   <div className="goal-plan-preview-heading"><span>سرعت رسیدن به هدف</span><b>{missingDetails ? 'اطلاعات ناقص' : projection.status === 'on-track' ? 'طبق برنامه' : projection.status === 'behind' ? 'عقب‌تر از برنامه' : 'مبلغ ماهانه لازم است'}</b></div>
                   <Progress percent={Math.min(100, projection.pacePercent ?? 0)} showInfo={false} status={projection.status === 'behind' ? 'exception' : 'normal'}/>
-                  <small>{missingDetails ? 'برای محاسبه سرعت پیشرفت، مبلغ نهایی و تاریخ هدف را تکمیل کن.' : <>{projection.requiredMonthlyAmount ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate!)} ماهی ${formatCompactToman(projection.requiredMonthlyAmount)} لازم است.` : ''}{projection.projectedMonths ? ` با برنامه فعلی حدود ${formatSavingsDuration(projection.projectedMonths)} زمان می‌برد.` : ''}</>}</small>
+                  <small>{missingDetails ? 'برای محاسبه سرعت پیشرفت، مبلغ نهایی و تاریخ هدف را تکمیل کن.' : <>{projection.requiredMonthlyAmount ? `برای رسیدن تا ${displayJalaliDate(goal.targetDate!)} ماهی ${formatCompactRial(projection.requiredMonthlyAmount)} لازم است.` : ''}{projection.projectedMonths ? ` با برنامه فعلی حدود ${formatSavingsDuration(projection.projectedMonths)} زمان می‌برد.` : ''}</>}</small>
                 </div>
               </Card>;
             })}</div>
@@ -342,7 +357,7 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
             </div>
             <div className="allocation-financial-controls">
               <div className="allocation-mode-field"><label>نوع تخصیص</label><Segmented block value={category.allocationMode} onChange={mode => changeAllocationMode(category, mode as 'percentage' | 'amount')} options={[{value:'percentage',label:'درصد'},{value:'amount',label:'مبلغ'}]} aria-label={`نوع تخصیص ${category.name}`}/></div>
-              <div className="allocation-value-field"><label htmlFor={`allocation-${category.id}`}>{category.allocationMode === 'amount' ? 'مبلغ تخصیص' : 'درصد تخصیص'}</label><Input id={`allocation-${category.id}`} inputMode={category.allocationMode === 'amount' ? 'numeric' : 'decimal'} value={allocationInputs[category.id] ?? ''} onChange={event => category.allocationMode === 'amount' ? changeAmount(category.id, event.target.value) : changePercentage(category.id, event.target.value)} onBlur={() => setAllocationInputs(inputs => ({ ...inputs, [category.id]: category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100) }))} aria-label={`${category.allocationMode === 'amount' ? 'مبلغ تخصیص' : 'درصد تخصیص'} ${category.name}`} suffix={category.allocationMode === 'amount' ? 'تومان' : '٪'}/></div>
+              <div className="allocation-value-field"><label htmlFor={`allocation-${category.id}`}>{category.allocationMode === 'amount' ? 'مبلغ تخصیص' : 'درصد تخصیص'}</label><Input id={`allocation-${category.id}`} inputMode={category.allocationMode === 'amount' ? 'numeric' : 'decimal'} value={allocationInputs[category.id] ?? ''} onChange={event => category.allocationMode === 'amount' ? changeAmount(category.id, event.target.value) : changePercentage(category.id, event.target.value)} onBlur={() => setAllocationInputs(inputs => ({ ...inputs, [category.id]: category.allocationMode === 'amount' ? String(category.amount) : String(category.percentageBps / 100) }))} aria-label={`${category.allocationMode === 'amount' ? 'مبلغ تخصیص' : 'درصد تخصیص'} ${category.name}`} suffix={category.allocationMode === 'amount' ? 'ریال' : '٪'}/>{category.allocationMode === 'amount' && <small className="money-input-equivalent">{formatTomanEquivalent(parseNonNegativeInteger(allocationInputs[category.id] ?? ''))}</small>}</div>
             </div>
             <div className="allocation-equivalent">{category.allocationMode === 'amount' ? `معادل ${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(category.percentageBps / 100)}٪ از مبلغ قابل‌خرج` : `معادل ${money(category.amount)}`}</div>
           </div>)}</div>
@@ -374,8 +389,8 @@ export default function Onboarding({ initialSetup, initialSavingsPortfolio, onCo
     <Modal className="savings-goal-editor-modal" open={Boolean(editingSavingsGoal)} title={editingSavingsGoal ? `ویرایش ${editingSavingsGoal.name}` : 'ویرایش هدف'} footer={null} destroyOnHidden onCancel={() => setEditingSavingsGoalId(null)}>
       {editingSavingsGoal && <Form component="div" layout="vertical">
         <Form.Item label="نام هدف"><Input value={editingSavingsGoal.name} onChange={event => updateSavingsGoal(editingSavingsGoal.id, { name: event.target.value })}/></Form.Item>
-        <Form.Item label="مبلغ نهایی (اختیاری)" extra={editingSavingsGoal.targetAmount ? `معادل ${formatCompactToman(editingSavingsGoal.targetAmount)}` : 'مبلغ را به تومان وارد کن.'}><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="تومان"/></Form.Item>
-        <Form.Item label="مبلغ ماهانه" extra={editingSavingsGoal.monthlyContribution ? `معادل ${formatCompactToman(editingSavingsGoal.monthlyContribution)} در ماه` : 'مبلغ را به تومان وارد کن.'}><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { monthlyContribution: value || 0 })} addonAfter="تومان"/></Form.Item>
+        <Form.Item label="مبلغ نهایی (اختیاری)" extra={formatTomanEquivalent(editingSavingsGoal.targetAmount)}><InputNumber className="ant-money-input" min={1} precision={0} controls={false} value={editingSavingsGoal.targetAmount} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetAmount: value })} addonAfter="ریال"/></Form.Item>
+        <Form.Item label="مبلغ ماهانه" extra={formatTomanEquivalent(editingSavingsGoal.monthlyContribution ?? 0)}><InputNumber className="ant-money-input" min={0} precision={0} controls={false} value={editingSavingsGoal.monthlyContribution ?? 0} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { monthlyContribution: value ?? 0 })} addonAfter="ریال"/></Form.Item>
         <Form.Item label="تاریخ هدف (اختیاری)"><JalaliDatePicker value={editingSavingsGoal.targetDate || ''} onChange={value => updateSavingsGoal(editingSavingsGoal.id, { targetDate: value || null })}/></Form.Item>
         <div className="savings-goal-editor-actions"><Button danger type="text" icon={<Trash2 size={15}/>} onClick={() => { setSavingsGoals(goals => goals.filter(goal => goal.id !== editingSavingsGoal.id)); setEditingSavingsGoalId(null); }}>حذف هدف</Button><Button type="primary" onClick={() => setEditingSavingsGoalId(null)}>تمام</Button></div>
       </Form>}

@@ -1,4 +1,6 @@
-export type Currency = 'TOMAN';
+import { formatRial } from './currency';
+
+export type Currency = 'IRR';
 
 export type SetupCategory = {
   id: string;
@@ -71,18 +73,7 @@ export function parseNonNegativeInteger(value: string) {
   return Number.isSafeInteger(amount) && amount >= 0 ? amount : null;
 }
 
-export function formatCompactToman(value: number) {
-  const amount = Number.isFinite(value) ? Math.max(0, value) : 0;
-  const units = [
-    { threshold: 1_000_000_000, label: 'میلیارد' },
-    { threshold: 1_000_000, label: 'میلیون' },
-    { threshold: 1_000, label: 'هزار' },
-  ];
-  const unit = units.find(item => amount >= item.threshold);
-  if (!unit) return `${new Intl.NumberFormat('fa-IR').format(amount)} تومان`;
-  const compactAmount = amount / unit.threshold;
-  return `${new Intl.NumberFormat('fa-IR', { maximumFractionDigits: 2 }).format(compactAmount)} ${unit.label} تومان`;
-}
+export { formatCompactRial } from './currency';
 
 export function percentageToBps(value: string) {
   const normalized = value.replace(/[۰-۹]/g, digit => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit))).replace('٫', '.').trim();
@@ -139,7 +130,7 @@ export function calculateSpendableAmount(monthlyIncome: number, savingsPercentBp
 export function validateBudgetAllocationLimit(spendableAmount: number, budgets: Record<string, number>) {
   const allocatedAmount = Object.values(budgets).reduce((sum, amount) => sum + Math.max(0, amount || 0), 0);
   if (allocatedAmount <= spendableAmount) return null;
-  return `${(allocatedAmount - spendableAmount).toLocaleString('fa-IR')} تومان بیشتر از مبلغ قابل‌خرج بودجه تعیین شده است.`;
+  return `${formatRial(allocatedAmount - spendableAmount)} بیشتر از مبلغ قابل‌خرج بودجه تعیین شده است.`;
 }
 
 export function validateFinancialSetup(monthlyIncome: number, savingsPercentBps: number, categories: SetupCategory[], savingsTargetAmount?: number) {
@@ -152,7 +143,7 @@ export function validateFinancialSetup(monthlyIncome: number, savingsPercentBps:
   const spendableAmount = calculateSpendableAmount(monthlyIncome, savingsPercentBps, savingsTargetAmount);
   const calculated = calculateCategoryAmounts(spendableAmount, categories);
   const allocatedAmount = calculated.reduce((sum, category) => sum + category.amount, 0);
-  if (allocatedAmount > spendableAmount) return `${(allocatedAmount - spendableAmount).toLocaleString('fa-IR')} تومان بیشتر از مبلغ قابل‌خرج تخصیص داده شده است.`;
+  if (allocatedAmount > spendableAmount) return `${formatRial(allocatedAmount - spendableAmount)} بیشتر از مبلغ قابل‌خرج تخصیص داده شده است.`;
   return null;
 }
 
@@ -163,7 +154,7 @@ export function createCompletedSetup(monthlyIncome: number, savingsPercentBps: n
     monthlyIncome,
     savingsPercentBps,
     savingsTargetAmount: calculateSavingsAmount(monthlyIncome, savingsPercentBps, savingsTargetAmount),
-    currency: 'TOMAN',
+    currency: 'IRR',
     categories: calculateCategoryAmounts(spendableAmount, categories),
     onboardingCompleted: true,
     reminder,
@@ -200,36 +191,41 @@ export function normalizeFinancialSetup(value: unknown): FinancialSetup | null {
   const setup = value as Partial<FinancialSetup>;
   const version = Number((value as { version?: unknown }).version);
   if (!Number.isSafeInteger(setup.monthlyIncome) || (setup.monthlyIncome ?? 0) <= 0 || !Array.isArray(setup.categories) || !setup.reminder) return null;
+  if (setup.currency !== 'IRR' && ((setup.monthlyIncome ?? 0) > Number.MAX_SAFE_INTEGER / 10 || (setup.savingsTargetAmount ?? 0) > Number.MAX_SAFE_INTEGER / 10 || setup.categories.some(category => category.amount > Number.MAX_SAFE_INTEGER / 10))) return null;
   if (version === 4 && Number.isSafeInteger(setup.savingsPercentBps)) return {
     ...(setup as FinancialSetup),
-    savingsTargetAmount: calculateSavingsAmount(setup.monthlyIncome!, setup.savingsPercentBps!, setup.savingsTargetAmount),
-    categories: setup.categories!.map(category => ({ ...category, allocationMode: category.allocationMode || 'percentage' })),
+    monthlyIncome: setup.currency === 'IRR' ? setup.monthlyIncome! : setup.monthlyIncome! * 10,
+    savingsTargetAmount: setup.currency === 'IRR'
+      ? calculateSavingsAmount(setup.monthlyIncome!, setup.savingsPercentBps!, setup.savingsTargetAmount)
+      : calculateSavingsAmount(setup.monthlyIncome!, setup.savingsPercentBps!, setup.savingsTargetAmount) * 10,
+    currency: 'IRR',
+    categories: setup.categories!.map(category => ({ ...category, amount: setup.currency === 'IRR' ? category.amount : category.amount * 10, allocationMode: category.allocationMode || 'percentage' })),
   };
   if (version === 3) {
     const legacy = value as { investmentPercentBps?: number };
-    return {
-      ...(setup as Omit<FinancialSetup, 'version' | 'savingsPercentBps'>),
+    return normalizeFinancialSetup({
+      ...setup,
       version: 4,
       savingsPercentBps: legacy.investmentPercentBps || 0,
       categories: setup.categories!.filter(category => category.name !== 'پس‌انداز').map(category => ({ ...category, allocationMode: category.allocationMode || 'percentage' })),
-    };
+    });
   }
   if (version === 2) {
     const legacy = value as { monthlyIncome: number; investmentTarget?: number };
-    return {
-      ...(setup as Omit<FinancialSetup, 'version' | 'savingsPercentBps'>),
+    return normalizeFinancialSetup({
+      ...setup,
       version: 4,
       savingsPercentBps: Math.max(0, Math.min(10000, Math.round(((legacy.investmentTarget || 0) / legacy.monthlyIncome) * 10000))),
       categories: setup.categories!.filter(category => category.name !== 'پس‌انداز').map(category => ({ ...category, allocationMode: 'percentage' })),
-    };
+    });
   }
   if (version === 1) {
-    return {
-      ...(setup as Omit<FinancialSetup, 'version' | 'savingsPercentBps'>),
+    return normalizeFinancialSetup({
+      ...setup,
       version: 4,
       savingsPercentBps: 0,
       categories: setup.categories!.filter(category => category.name !== 'پس‌انداز').map(category => ({ ...category, allocationMode: 'percentage' })),
-    };
+    });
   }
   return null;
 }

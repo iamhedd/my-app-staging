@@ -19,7 +19,28 @@ describe('localStorage migration planning', () => {
     const payload = readLegacyPayload(source, 'email:a@example.com', 'a@example.com');
     expect(payload.profile?.name).toBe('A');
     expect(payload.transactions[0].id).toBe('1');
+    expect(payload.transactions[0].amount).toBe(10_000);
     expect(hasLegacyData(payload)).toBe(true);
+  });
+
+  it('does not multiply cached rial amounts again', () => {
+    const plan = { version: 4, monthlyIncome: 100_000, savingsPercentBps: 0, currency: 'IRR', categories: [], onboardingCompleted: true, reminder: { enabled: false, time: '21:00', timezone: 'Asia/Tehran' } };
+    const source = storage({
+      'gav-financial-setup-v1:user-a': plan,
+      'gav-transactions-v2:user-a': [{ id: 'one', title: 'خرید', category: 'خوراک', amount: 12340, type: 'expense', date: '1405/06/24' }],
+      'gav-budgets-v3:user-a': { خوراک: 50_000 },
+    });
+    const payload = readLegacyPayload(source, 'user-a', 'a@example.com');
+    expect(payload.transactions[0].amount).toBe(12340);
+    expect(payload.budgets.خوراک).toBe(50_000);
+  });
+
+  it('recognizes rial cloud caches even without a financial plan', () => {
+    const source = storage({
+      'gav-money-unit-v1:user-a': 'IRR',
+      'gav-transactions-v2:user-a': [{ id: 'one', title: 'خرید', category: 'خوراک', amount: 12340, type: 'expense', date: '1405/06/24' }],
+    });
+    expect(readLegacyPayload(source, 'user-a', 'a@example.com').transactions[0].amount).toBe(12340);
   });
 
   it('does not let a second account claim another user local source', () => {

@@ -38,6 +38,11 @@ export function allocatedSavings(portfolio: SavingsPortfolio | null) {
   return portfolio?.goals.reduce((sum, goal) => sum + goal.allocatedAmount, 0) ?? 0;
 }
 
+export function setGoalMonthlyAllocation(goals: SavingsGoal[], id: string, amount: number): SavingsGoal[] {
+  if (!Number.isSafeInteger(amount) || amount < 0) return goals;
+  return goals.map(goal => goal.id === id ? { ...goal, allocatedAmount: amount, monthlyContribution: amount } : goal);
+}
+
 export function unallocatedSavings(portfolio: SavingsPortfolio | null) {
   return Math.max(0, (portfolio?.totalAmount ?? 0) - allocatedSavings(portfolio));
 }
