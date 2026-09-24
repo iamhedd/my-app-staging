@@ -102,7 +102,10 @@ export function createApp() {
     app.use((request, response, next) => {
       // A removed build chunk must be a 404, never the SPA's HTML shell.
       if (request.path.startsWith('/assets/')) return next();
-      if (request.method === 'GET' && request.accepts('html')) return response.sendFile(indexFile);
+      if (request.method === 'GET' && request.accepts('html')) {
+        response.setHeader('cache-control', 'no-store, max-age=0');
+        return response.sendFile(indexFile, { cacheControl: false });
+      }
       return next();
     });
   }
