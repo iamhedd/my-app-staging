@@ -211,7 +211,7 @@ export default function SavingsPage({ month, portfolio, fallbackTotal, suggested
       </Card>;
     })}</div>}
 
-    <Modal open={setupOpen} closable maskClosable={!saving} title={setupStep === 1 ? 'پس‌انداز این ماه' : 'هدف‌بندی پس‌انداز'} footer={null} onCancel={() => !saving && (portfolio ? setSetupOpen(false) : skipInitialSetup())}>
+    <Modal open={setupOpen} closable maskClosable={!saving} title={setupStep === 1 ? 'پس‌انداز این ماه' : 'هدف‌بندی پس‌انداز'} footer={null} onCancel={() => { if (!saving) setSetupOpen(false); }}>
       {setupStep === 1 ? <Form layout="vertical" onFinish={() => setupAmount && setupAmount > 0 ? (setError(''), setSetupStep(2)) : setError('مبلغ پس‌انداز این ماه را وارد کن.')}><p className="savings-modal-lead">این ماه چقدر می‌خوای پس‌انداز کنی؟</p><Form.Item label="مبلغ پس‌انداز" extra={setupAmount ? `${formatTomanEquivalent(setupAmount)}` : 'مبلغ را به ریال وارد کن.'}><InputNumber className="ant-money-input" autoFocus min={1} precision={0} value={setupAmount} onChange={setSetupAmount} addonAfter="ریال"/></Form.Item>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" htmlType="submit">ادامه</Button><Button block type="text" loading={saving} onClick={skipInitialSetup}>فعلاً بعداً</Button></Form> : <div className="savings-choice-step"><Vault size={38}/><h3>می‌خوای پس‌اندازت رو برای هدف‌های مختلف دسته‌بندی کنی؟</h3><p>این مرحله اختیاری است و هر زمان بخواهی می‌توانی هدف بسازی.</p>{error && <Alert type="error" showIcon message={error}/>}<Button block type="primary" loading={saving} onClick={() => finishInitialSetup(true)}>بله، هدف‌بندی کنم</Button><Button block loading={saving} onClick={() => finishInitialSetup(false)}>فعلاً نه</Button></div>}
     </Modal>
 
